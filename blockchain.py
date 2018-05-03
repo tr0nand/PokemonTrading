@@ -17,6 +17,9 @@ class Blockchain(object):
         #Create genesis block
         self.new_block(proof=0,previous_hash='1')
 
+        #List of all Users
+        self.users= []
+
     def new_block(self,proof,previous_hash = None):
         #Create a new block after mining in the blockchain
         #previous_hash = None for the genesis block
@@ -59,6 +62,16 @@ class Blockchain(object):
         guess_hash = hashlib.sha256(guess).hexdigest()
         return guess_hash[:4] == '0000'
 
+    def checkuser(self,username):
+        for k in self.users:
+            if k['username'] == username:
+                return False
+        return True
+
+    def createuser(self,username,passhash):
+        self.users.append({'username':username,'passhash':passhash,'address':str(uuid4()).replace('-', '')})
+
+
     @staticmethod
     def hash(block):
         #Creates a SHA-256 hash of a block
@@ -66,6 +79,10 @@ class Blockchain(object):
         block_string = json.dumps(block,sort_keys=True).encode()
         return hashlib.sha256(block_string).hexdigest()
 
+    def retrievepass(self,user):
+        for k in self.users:
+            if k['username'] == user:
+                return k['passhash']
     @property
     def last_block(self):
         # Returns the last Block in the chain
@@ -80,9 +97,36 @@ node_identifier = str(uuid4()).replace('-', '')
 # Instantiate the Blockchain
 blockchain = Blockchain()
 
-@app.route('/login',methods=['GET'])
+@app.route('/login',methods=['GET','POST'])
 def login():
-    return render_template('./login.html')
+    if request.method == 'GET':
+        return render_template('./login.html')
+    if request.method == 'POST':
+        values = request.form
+        if not values['Username']:
+            message = "Trainername left blank"
+            return render_template('./login.html',mess = message)
+        if not values['pw']:
+            message = "Password left blank"
+            return render_template('./login.html',mess = message)
+        if values['type'] == 'Log':
+            if not blockchain.checkuser(values['Username']):
+                ph = blockchain.retrievepass(values['Username'])
+                passhash = hashlib.sha256(str(values['pw']).encode()).hexdigest()
+                if ph == passhash:
+                    return jsonify("Logged in")
+                message = 'Invalid Password'
+                return render_template('./login.html',mess = message)
+            message = "Trainer doesn't exist"
+            return render_template('./login.html',mess = message)
+        if values['type'] == 'Reg':
+            if blockchain.checkuser(values['Username']):
+                passhash = hashlib.sha256(str(values['pw']).encode()).hexdigest()
+                blockchain.createuser(values['Username'],passhash)
+                return jsonify("New register")
+            message = 'Trainername already taken. Choose a different one'
+            return render_template('./login.html',mess = message)
+
 
 @app.route('/mine', methods=['GET'])
 def mine():
