@@ -1,12 +1,14 @@
 import hashlib
 import json
 from time import time
+from uuid import uuid4
 
+from flask import Flask,jsonify,request,render_template
 
 
 #Blockchain class
 class Blockchain(object):
-    def _init_(self):
+    def __init__(self):
         #Existing Blockchain
         self.chain=[]
         #Current trades pending
@@ -52,8 +54,8 @@ class Blockchain(object):
 
         return proof
 
-    def valid_proof(last_proof,proof):
-        guess = (last_proof+proof).encode()
+    def valid_proof(self,last_proof,proof):
+        guess = str(last_proof+proof).encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
         return guess_hash[:4] == '0000'
 
@@ -67,4 +69,50 @@ class Blockchain(object):
     @property
     def last_block(self):
         # Returns the last Block in the chain
-        pass
+        return self.chain[-1]
+
+# Instantiate our Node
+app = Flask(__name__,template_folder='templates')
+
+# Generate a globally unique address for this node
+node_identifier = str(uuid4()).replace('-', '')
+
+# Instantiate the Blockchain
+blockchain = Blockchain()
+
+@app.route('/login',methods=['GET'])
+def login():
+    return render_template('./login.html')
+
+@app.route('/mine', methods=['GET'])
+def mine():
+    last_block = blockchain.last_block
+    last_proof = last_block['proof']
+    proof = blockchain.proof_of_work(last_proof)
+
+    #RATTATA / CATTERPIE / SHIT Reward
+
+    previous_hash = blockchain.hash(last_block)
+    block = blockchain.new_block(proof,previous_hash)
+
+
+@app.route('/transactions/new', methods=['POST'])
+def new_transaction():
+    values = request.get_json()
+    required = ['trainer1','trainer2','sentby2','sentby1']
+    if not all(k in values for k in required):
+        return 'Missing values',400
+
+    index = blockchain.new_transaction(values['trainer1'],values['trainer2'],values['sentby1'],values['sentby2'])
+
+
+@app.route('/chain', methods=['GET'])
+def full_chain():
+    response = {
+        'chain': blockchain.chain,
+        'length': len(blockchain.chain),
+    }
+    return jsonify(response), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)

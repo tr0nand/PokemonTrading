@@ -1,0 +1,41 @@
+<title>Login</title>
+<style>
+
+body {
+  background-image: url({{url_for('static',filename='img/charbackground.png')}});
+  background-size: 100% 100%;
+}
+
+.login{
+  position: absolute;
+  left:100px;
+  top:150px;
+
+}
+
+
+.reg{
+position:absolute;
+right:100px;
+top:150px;
+}
+</style>
+
+
+<body>
+  <div class = "login">
+    <form method="POST" >
+      <h1>Login</h1>
+
+    </form>
+  </div>
+  <div class = "reg">
+    <form method="POST" >
+
+        <center>
+          <h1>Register</h1>
+          
+        </center>
+    </form>
+  </div>
+</body>
