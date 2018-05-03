@@ -1,0 +1,25 @@
+<title>{{name}}</title>
+<style>
+
+body {
+  background-image: url({{url_for('static',filename='img/charbackground.png')}});
+  background-size: 100% 100%;
+}
+
+.card{}
+</style>
+
+<body>
+<center>
+<b style="font-size:40px">Welcome {{name}}</b>
+<br><br><br><br>
+<b style = "font-size:20px">Current Pokemon</b>
+<br><br>
+</center>
+<br><br>
+{% for k in pokes %}
+{{k.name}}
+<img src="static/img/pokemon/{{ k.id }}" alt={{k.name}} width="120" height="90" />
+<br>
+{% endfor %}
+</body>

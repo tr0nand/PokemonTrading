@@ -2,11 +2,28 @@ import hashlib
 import json
 from time import time
 from uuid import uuid4
+import pandas as pd
+from flask import Flask,jsonify,request,render_template,redirect
+import random
+import pokemon
 
-from flask import Flask,jsonify,request,render_template
+
+class User(object):
+    def __init__(self,username,passhash,address):
+        self.username=username
+        self.passhash=passhash
+        self.address=address
+        self.pokes=[]
+
+    def addpokemon(self,index):
+        self.pokes.append(index)
+
+    def rempokemon(self,index):
+        self.pokes.remove(index)
 
 
 #Blockchain class
+
 class Blockchain(object):
     def __init__(self):
         #Existing Blockchain
@@ -64,14 +81,21 @@ class Blockchain(object):
 
     def checkuser(self,username):
         for k in self.users:
-            if k['username'] == username:
+            if k.username == username:
                 return False
         return True
 
     def createuser(self,username,passhash):
-        self.users.append({'username':username,'passhash':passhash,'address':str(uuid4()).replace('-', '')})
+        user = User(username,passhash,str(uuid4()).replace('-', ''))
+        for x in range(5):
+            user.addpokemon(random.randint(1,151))
+        self.users.append(user)
+        return user
 
-
+    def returnuser(self,username):
+        for k in self.users:
+            if k.username == username:
+                return k
     @staticmethod
     def hash(block):
         #Creates a SHA-256 hash of a block
@@ -81,8 +105,8 @@ class Blockchain(object):
 
     def retrievepass(self,user):
         for k in self.users:
-            if k['username'] == user:
-                return k['passhash']
+            if k.username == user:
+                return k.passhash
     @property
     def last_block(self):
         # Returns the last Block in the chain
@@ -96,7 +120,7 @@ node_identifier = str(uuid4()).replace('-', '')
 
 # Instantiate the Blockchain
 blockchain = Blockchain()
-
+pok = pokemon.Pokemon()
 @app.route('/login',methods=['GET','POST'])
 def login():
     if request.method == 'GET':
@@ -114,7 +138,8 @@ def login():
                 ph = blockchain.retrievepass(values['Username'])
                 passhash = hashlib.sha256(str(values['pw']).encode()).hexdigest()
                 if ph == passhash:
-                    return jsonify("Logged in")
+                    user = blockchain.returnuser(values['Username'])
+                    return redirect(str('/home/'+user.username))
                 message = 'Invalid Password'
                 return render_template('./login.html',mess = message)
             message = "Trainer doesn't exist"
@@ -122,11 +147,19 @@ def login():
         if values['type'] == 'Reg':
             if blockchain.checkuser(values['Username']):
                 passhash = hashlib.sha256(str(values['pw']).encode()).hexdigest()
-                blockchain.createuser(values['Username'],passhash)
-                return jsonify("New register")
+                user = blockchain.createuser(values['Username'],passhash)
+                return redirect(str('/home/'+user.username))
             message = 'Trainername already taken. Choose a different one'
             return render_template('./login.html',mess = message)
 
+@app.route('/home/<username>')
+def home(username):
+    user = blockchain.returnuser(username)
+    pokenum = user.pokes
+    z=[]
+    for k in pokenum:
+        z.append({'name':pok.pokename(k),'id':str(str(k)+'.png')})
+    return render_template('./home.html',pokes=z,name=username,)
 
 @app.route('/mine', methods=['GET'])
 def mine():
