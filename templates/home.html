@@ -18,8 +18,9 @@ body {
 </center>
 <br><br>
 {% for k in pokes %}
+<img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}} width="120" height="90" />
+<br>
 {{k.name}}
-<img src="static/img/pokemon/{{ k.id }}" alt={{k.name}} width="120" height="90" />
 <br>
 {% endfor %}
 </body>
