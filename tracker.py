@@ -26,14 +26,15 @@ class tracker(object):
         peer_list.remove(client_addr)
         to_send_peer = {"type": "peer list", "peers": peer_list}
         to_send_peer = json.dumps(to_send_peer)
+        send_length = len(to_send_peer)
 
-        self.peer_sockets[client_addr].send(to_send_peer)
+        await self.peer_sockets[client_addr].send(send_length,8)
+        await self.peer_sockets[client_addr].send(to_send_peer)
 
 
 
     async def new_peer(self, client_addr):
-        to_send = {"type": "join", "address": self.peer_sockets[client_addr]}
-        to_send = json.dumps(to_send)
+        to_send = socket.inet_aton(client_addr)
 
         for cl_a in self.peer_sockets:
             if cl_a != client_addr:

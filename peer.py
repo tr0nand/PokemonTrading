@@ -1,4 +1,6 @@
 import socket
+import asyncio
+import json
 
 class Peer(object):
     tracker_port = 12001
@@ -26,5 +28,14 @@ class Peer(object):
         resp = sock.recv(1)
         if resp == b"\x55":
             print("Tracker found, joining the network.")
+        self.tracker = sock
+        recv_len = int(sock.recv(8))
+        resp = sock.recv(recv_len)
+        resp = json.load(resp)
+        self.peer_list.extend(resp["peers"])
 
 
+    async def listen_tracker(self):
+        server_msg = self.tracker.recv(4)
+        new_ip = socket.inet_ntoa(server_msg)
+        self.peer_list.append(new_ip)
