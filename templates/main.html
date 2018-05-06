@@ -1,0 +1,45 @@
+<title>Pokemon Trading</title>
+<style>
+
+body {
+  background-image: url({{url_for('static',filename='img/charbackground.png')}});
+  background-repeat:no-repeat;
+  background-size:100% 100vh;
+}
+
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
+<body>
+<center>
+<b style="font-size:40px;">Welcome {{name}}</b>
+<br><br><br><br>
+<a href = '/mine' id="mine" onclick="mining()">Mine</a>
+<a href = '/node/chain'>View Blockchain</a>
+<br><br>
+<b style = "font-size:20px">Current Pokemon</b>
+<br><br>
+</center>
+
+<br><br>
+{% if pokes %}
+
+{% for k in pokes %}
+<img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}} width="120" height="90" />
+<br>
+{{k.name}}
+<br>
+{% endfor %}
+</body>
+{% else %}
+<center>
+<b id = "warn">No Pokemon currently owned. Mine blocks to capture Pokemon</b>
+</center>
+{% endif %}
+
+<script type="text/javascript">
+
+function mining(){
+  alert('Mining to begin');
+}
+</script>

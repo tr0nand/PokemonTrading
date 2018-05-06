@@ -1,26 +1,31 @@
-<title>{{name}}</title>
+
 <style>
 
 body {
-  background-image: url({{url_for('static',filename='img/charbackground.png')}});
-  background-size: 100% 100%;
+  background-image: url({{url_for('static',filename='img/back.png')}});
+  background-repeat:no-repeat;
+  background-size:100% 100vh;
 }
 
-.card{}
+stepd{
+  position:absolute;
+  left:128px;
+  top:300px;
+}
 </style>
 
+
+
+<head>
+<link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
+</head>
+<title>Pokemon Trading</Title>
+<form method = "post">
+<stepd>
+
+<input id="username" name = "user" type = "text" style="font-size:20pt;height:50px;left:100px" placeholder="Enter name">
+</stepd>
+</form>
 <body>
-<center>
-<b style="font-size:40px">Welcome {{name}}</b>
-<br><br><br><br>
-<b style = "font-size:20px">Current Pokemon</b>
-<br><br>
-</center>
-<br><br>
-{% for k in pokes %}
-<img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}} width="120" height="90" />
-<br>
-{{k.name}}
-<br>
-{% endfor %}
+
 </body>
