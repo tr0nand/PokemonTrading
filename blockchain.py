@@ -20,6 +20,7 @@ class Blockchain(object):
         self.nodes = set()
         #Create genesis block
         self.new_block(proof=0,previous_hash='0')
+        self.currentmining = False
 
     def nodereg(self,node):
         self.nodes.add(node)
@@ -56,9 +57,10 @@ class Blockchain(object):
         #Simple proof of work algorithm:
 
         proof = 0;
+        print("Mining going on")
         while self.valid_proof(last_proof,proof) is False:
             proof +=1
-
+        print("Proofofwork found")
         return proof
 
     def valid_proof(self,last_proof,proof):

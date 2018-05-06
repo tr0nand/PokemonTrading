@@ -12,17 +12,13 @@ nodes=set()
 def register_node():
     data  = ast.literal_eval((request.data).decode('utf-8'))['Node']
     print(data)
-
     for node in nodes:
-        requests.post(node,json.dumps({'Node':data}))
+        requests.post(node,json.dumps({'Node':data,'New':'True'}))
+        requests.post(data,json.dumps({'Node':node,'New':'False'}))
+    nodes.add(data)
+    return jsonify("Received")
 
-    try:
-        return jsonify("Received")
-    finally:
-        sleep(1)
-        for node in nodes:
-            requests.post(data,json.dumps({'Node':data}))
-        nodes.add(data)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=2000)
