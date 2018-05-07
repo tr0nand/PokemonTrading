@@ -14,10 +14,17 @@ import threading
 import pandas as pd
 
 
+if len(sys.argv) ==1 :
+    print("Nodetracker and port number not passed")
+    exit()
+
+if len(sys.argv) ==2 :
+    print("Port number not passed")
+    exit()
 # Instantiate our Node
 app = Flask(__name__,template_folder='templates')
 
-node = str('http://0.0.0.0:' + sys.argv[2]+ '/nodes')
+node = str('http://0.0.0.0:' + sys.argv[2]+ '/node')
 
 # Instantiate the Blockchain
 blockchain = Blockchain(node)
@@ -34,7 +41,7 @@ def regnode():
     url=str('http://0.0.0.0:' + sys.argv[1]+ '/nodes')
     payload={'Node':str('http://0.0.0.0:'+ sys.argv[2]+'/node')}
     requests.post(url,data=json.dumps(payload))
-
+    print("Node registration completed")
 
 
 if(len(sys.argv)==1):
@@ -57,6 +64,7 @@ def start():
     if username.isspace() or not username:
         return render_template('./home.html')
     blockchain.user = username
+    print("User initiated")
     return redirect(url_for('home'))
 
 
@@ -71,16 +79,16 @@ def home():
 @app.route('/node',methods=['POST'])
 def register_node():
     data  = ast.literal_eval((request.data).decode('utf-8'))
+    print("New node received-")
     print(data['Node'])
     blockchain.nodereg(data['Node'])
-
     if data['New'] == 'False':
         bk = requests.get(str(data['Node']+"/chain")).json()
         while(blockchain.currentmining):
             pass
         if bk['length'] > len(blockchain.chain):
             blockchain.chain = bk['chain']
-            print(blockchain.chain)
+            print("Consensus chain received")
     return jsonify("Received")
 
 
@@ -88,9 +96,9 @@ def register_node():
 def mine():
     #if len(blockchain.current_trade) == 0:
     #    return jsonify("No transactions to mine"),200
+    blockchain.currentmining = True
     last_block = blockchain.last_block
     last_proof = last_block['proof']
-    blockchain.currentmining = True
     proof = blockchain.proof_of_work(last_proof)
     previous_hash = blockchain.hash(last_block)
     block = blockchain.new_block(proof,previous_hash)
@@ -102,6 +110,80 @@ def mine():
         requests.post(url,data=payload)
     return redirect(url_for('home'))
 
+@app.route('/trade')
+def starttrade():
+    pokes=[]
+    pokenum = blockchain.own_pokes()
+    for k in pokenum:
+        pokes.append({'name':pokemonname(k),'id':str(str(k)+'.png'),'num':k})
+    return render_template('./trade.html',name=blockchain.user,pokes=pokes)
+
+@app.route('/trade/<param>')
+def choosetrain(param):
+    nodes = blockchain.nodes
+    response=[]
+    param = int(param)
+    for n in nodes:
+        otherpokes = blockchain.other_pokes(n)
+        for i in otherpokes:
+            j = pokemonname(i)
+            response.append({'name':j,'id':(str(i)+".png"),'num':i,'trainer':n})
+    name = pokemonname(param)
+    cur = param
+    param = str(param)+'.png'
+    return render_template('./tradereq.html',name=name,id=param,pokes=response,cur=cur)
+
+@app.route('/trade/outg',methods=['GET','POST'])
+def tradereq():
+    if request.method == 'GET':
+        treq = blockchain.tradereqs
+        pokes=[]
+        for p in treq:
+            k={}
+            i= pokemonname(p['rec'])
+            j=pokemonname(p['sent'])
+            k['rec'] = i
+            k['sent'] = j
+            k['node'] =p['node']
+            k['status'] = p['status']
+            pokes.append(k)
+        return render_template('./tradessent.html',pokes = pokes)
+    if request.method == 'POST':
+        timestamp=time()
+        blockchain.tradereqs.append({'node':request.form['node'],'sent':int(request.form['Sendpoke']),'rec':int(request.form['Rec']),'status':'No response yet','timestamp':timestamp})
+        print(blockchain.tradereqs)
+        payload={'node':blockchain.node,'sent':request.form['Sendpoke'],'rec':request.form['Rec'],'timestamp':timestamp}
+        url=str(request.form['node']+'/trade/off')
+        requests.post(url,data = json.dumps(payload))
+        print("Offer sent")
+        return redirect('/trade/outg')
+
+@app.route('/trade/off')
+def tradeoff():
+    tre = blockchain.offers
+    pokes=[]
+    for p in tre:
+        k={}
+        i=pokemonname(p['sent'])
+        j=pokemonname(p['rec'])
+        k['sent'] = i
+        k['rec'] = j
+        k['node']=p['node']
+        k['time']=p['timestamp']
+        k['sentid']=p['sent']
+        k['recid']=p['rec']
+        pokes.append(k)
+    return render_template('./tradeoffers.html',pokes=pokes)
+
+@app.route('/node/trade/off',methods=['POST'])
+def tradeoffrec():
+    if request.method == 'POST':
+        print("Offer received")
+        data = ast.literal_eval((request.data).decode('utf-8'))
+        print(data)
+        blockchain.offers.append({'node':data['node'],'sent':int(data['sent']),'rec':int(data['rec']),'timestamp':data['timestamp']})
+        print(blockchain.offers)
+        return jsonify("Received offer")
 
 @app.route('/node/sync',methods=['POST'])
 def sync():
@@ -126,7 +208,52 @@ def add_transaction():
     print(blockchain.current_trade)
     return jsonify(blockchain.current_trade),200
 
-@app.route('/trade/new', methods=['POST'])
+@app.route('/trade/resp',methods=['POST'])
+def traderesponse():
+    if request.form['submit'] == 'Accept':
+        offers = blockchain.offers
+        for o in offers:
+            if str(o['node']) == str(request.form['node']) and (str(o['sent']) == str(request.form['Sendpoke'])) and (str(o['rec']) == str(request.form['Rec'])) and (str(o['timestamp']) == str(request.form['tim'])):
+                offers.remove(o)
+                print("Offer removed")
+                break
+        blockchain.offers = offers
+        url = str(request.form['node']+'/trade/offerresp')
+        payload={'node':blockchain.node,'sent':request.form['Sendpoke'],'rec':request.form['Rec'],'tim':request.form['tim'],'status':'Accepted but Unverified'}
+        print(url)
+        requests.post(url,data=json.dumps(payload))
+        url=str(request.form['node']+'/')
+        return redirect('/trade/off')
+    else:
+        offers = blockchain.offers
+        for o in offers:
+            if str(o['node']) == str(request.form['node']) and (str(o['sent']) == str(request.form['Sendpoke'])) and (str(o['rec']) == str(request.form['Rec'])) and (str(o['timestamp']) == str(request.form['tim'])):
+                offers.remove(o)
+                print("Offer removed")
+                break
+        blockchain.offers = offers
+        url = str(request.form['node']+'/trade/offerresp')
+        payload={'node':blockchain.node,'sent':request.form['Sendpoke'],'rec':request.form['Rec'],'tim':request.form['tim'],'status':'Cancelled'}
+        print(url)
+        requests.post(url,data=json.dumps(payload))
+        return redirect('/trade/off')
+
+@app.route('/node/trade/offerresp',methods=['POST'])
+def offresp():
+    data = ast.literal_eval((request.data).decode('utf-8'))
+    treqs=blockchain.tradereqs
+    for k in treqs:
+        print(k)
+        if str(k['node']) == str(data['node']) and str(k['timestamp']) == str(data['tim']):
+            print("HSAFSAF")
+            k['status']=str(data['status'])
+            break
+    print(treqs)
+    blockchain.tradereqs=treqs
+    return jsonify("Received")
+
+
+@app.route('/node/trade/new', methods=['POST'])
 def new_transaction():
     values = request.get_json()
     required = ['trainer1','trainer2','sentby2','sentby1']

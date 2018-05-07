@@ -1,0 +1,27 @@
+<title>Pokemon Trading</title>
+<style>
+
+body {
+  background-image: url({{url_for('static',filename='img/charbackground.png')}});
+  background-repeat:no-repeat;
+  background-size:100% 100vh;
+}
+
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
+<body>
+<center>
+<b style="font-size:40px;">Trade Requests Sent</b>
+<br><br><br><br>
+<a href='/home'>Home</a>
+<a href='/trade'>New Trade</a>
+<a href='off'>View Trade Offers</a>
+<a href = 'unc'>View Unconfirmed Trades</a>
+<br><br>
+
+
+{% for trade in pokes %}
+<b> Pokemon to be sent: {{trade.sent}} Pokemon to be received : {{trade.rec}} Trainer : {{trade.node}}  Status : {{trade.status}}
+<br><br><br>
+{% endfor %}

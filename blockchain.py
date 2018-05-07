@@ -20,7 +20,6 @@ class Blockchain(object):
         self.current_trade = []
         self.nodes = set()
         self.node = node
-        #Create genesis block
         self.currentmining = False
         self.pokedex = pd.read_csv('Kanto.csv')['Rarity']
         self.rew1=[]
@@ -45,11 +44,16 @@ class Blockchain(object):
         self.rew3 = self.rew3 + self.rew2
         self.rew4 = self.rew4 + self.rew3
         self.rew5 = self.rew5 + self.rew4
+
+        #Create genesis block
         self.new_block(proof=0,previous_hash='0')
 
-
+        self.tradereqs=[]
+        self.offers = []
+        
     def own_pokes(self):
         caughtpokes=[]
+        print("Own pokemon referenced")
         for block in self.chain:
             if block['miner'] == self.node:
                 caughtpokes.append(block['rew'])
@@ -60,7 +64,26 @@ class Blockchain(object):
                 elif trade['trainer2'] == self.node:
                     caughtpokes.append(trade['sentby1'])
                     caughtpokes.remove(trade['sentby2'])
+        print("Own pokemon received")
         return caughtpokes
+
+    def other_pokes(self,nodel):
+        caughtpokes=[]
+        print("Pokemon belonging to")
+        print(nodel)
+        for block in self.chain:
+            if block['miner'] == nodel:
+                caughtpokes.append(block['rew'])
+            for trade in block['trade']:
+                if trade['trainer1'] == nodel:
+                    caughtpokes.append(trade['sentby2'])
+                    caughtpokes.remove(trade['sentby1'])
+                elif trade['trainer2'] == nodel:
+                    caughtpokes.append(trade['sentby1'])
+                    caughtpokes.remove(trade['sentby2'])
+        print("Pokemon referenced")
+        return caughtpokes
+
 
     def nodereg(self,node):
         self.nodes.add(node)
@@ -90,7 +113,7 @@ class Blockchain(object):
             rew = random.choice(self.rew5)
         block['rew']=rew;
         self.chain.append(block)
-        print(block)
+        print("Block mined and added to chain")
         return block
 
 
@@ -115,15 +138,16 @@ class Blockchain(object):
 
         proof = 0;
         print("Mining going on")
-        while self.valid_proof(last_proof,proof) is False:
+        lastb = self.hash(self.chain[-1])
+        while self.valid_proof(last_proof,proof,lastb) is False:
             proof +=1
         print("Proofofwork found")
         return proof
 
-    def valid_proof(self,last_proof,proof):
-        guess = str(last_proof+proof).encode()
+    def valid_proof(self,last_proof,proof,lasthash):
+        guess = str(str(last_proof+proof)+str(lasthash)).encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
-        return guess_hash[:7] == '0000000'
+        return guess_hash[:4] == '0000'
 
 
 

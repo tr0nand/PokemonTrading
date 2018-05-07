@@ -1,0 +1,41 @@
+<title>Pokemon Trading</title>
+<style>
+
+body {
+  background-image: url({{url_for('static',filename='img/charbackground.png')}});
+  background-repeat:no-repeat;
+  background-size:100% 100vh;
+}
+
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
+<body>
+<center>
+<b style="font-size:40px;">Trade {{name}}</b>
+<br><br><br><br>
+<a href='/home'>Home</a>
+<a href='/trade/outg'>View Trade Requests</a>
+<a href='/trade/off'>View Trade Offers</a>
+<a href = '/trade/unc'>View Unconfirmed Trades</a>
+<br><br>
+<b style = "font-size:20px">Choose Pokemon to receive</b>
+<br><br>
+</center>
+
+<br><br>
+
+
+{% for k in pokes %}
+<form name = "submitForm" method="POST" action = "/trade/outg">
+<input type = "hidden" name="node" value={{k.trainer}}>
+<input type = "hidden" name="Sendpoke" value={{cur}}>
+<input type = "hidden" name="Rec" value = {{k.num}}>
+<input type = "image" name = "submit" src="/static/img/pokemon/{{ k.id }}" alt = "Submit">
+<br>
+{{ k.name }}
+<br>
+<b>Trainer : {{k.trainer}}</b>
+<br><br>
+</form>
+{% endfor %}

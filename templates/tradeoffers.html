@@ -1,0 +1,37 @@
+<title>Pokemon Trading</title>
+<style>
+
+body {
+  background-image: url({{url_for('static',filename='img/charbackground.png')}});
+  background-repeat:no-repeat;
+  background-size:100% 100vh;
+}
+
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
+<body>
+<center>
+<b style="font-size:40px;">Trade Offers Received</b>
+<br><br><br><br>
+<a href='/home'>Home</a>
+<a href='/trade'>New Trade</a>
+<a href='/trade/outg'>View Trade Requests</a>
+<a href = 'unc'>View Unconfirmed Trades</a>
+<br><br>
+
+
+{% for trade in pokes %}
+<form name = "submitForm" method="POST" action = "/trade/resp">
+<input type = "hidden" name="node" value={{trade.node}}>
+<input type = "hidden" name="Sendpoke" value={{trade.sentid}}>
+<input type = "hidden" name="Rec" value = {{trade.recid}}>
+<input type = "hidden" name = "tim" value = {{trade.time}}>
+<b> Pokemon to be sent: {{trade.sent}} Pokemon to be received : {{trade.rec}} Trainer : {{trade.node}}</b>
+<br>
+<center>
+<input type = "submit" name="submit" value = "Accept">
+<input type = "submit" name="submit" value = "Reject">
+</center>
+<br><br><br>
+{% endfor %}

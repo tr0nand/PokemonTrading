@@ -12,13 +12,14 @@ body {
 <link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
 <body>
 <center>
-<b style="font-size:40px;">Welcome {{name}}</b>
+<b style="font-size:40px;">{{name}} Trade Pokemon</b>
 <br><br><br><br>
-<a href = '/mine' id="mine" onclick="mining()">Mine</a>
-<a href = '/node/chain'>View Blockchain</a>
-<a href = '/trade'>Trade</a>
+<a href='/home'>Home</a>
+<a href='trade/outg'>View Trade Requests</a>
+<a href='trade/off'>View Trade Offers</a>
+<a href = 'trade/unc'>View Unconfirmed Trades</a>
 <br><br>
-<b style = "font-size:20px">Current Pokemon</b>
+<b style = "font-size:20px">Choose Pokemon to trade</b>
 <br><br>
 </center>
 
@@ -26,9 +27,9 @@ body {
 {% if pokes %}
 
 {% for k in pokes %}
-<img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}} />
+<a href = "/trade/{{k.num}}"><img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}} />
 <br>
-{{k.name}}
+{{k.name}}</a>
 <br>
 {% endfor %}
 </body>
@@ -37,10 +38,3 @@ body {
 <b id = "warn">No Pokemon currently owned. Mine blocks to capture Pokemon</b>
 </center>
 {% endif %}
-
-<script type="text/javascript">
-
-function mining(){
-  alert('Mining to begin');
-}
-</script>
