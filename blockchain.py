@@ -50,37 +50,46 @@ class Blockchain(object):
 
         self.tradereqs=[]
         self.offers = []
-        
+
     def own_pokes(self):
         caughtpokes=[]
+        rem=[]
         print("Own pokemon referenced")
         for block in self.chain:
             if block['miner'] == self.node:
                 caughtpokes.append(block['rew'])
             for trade in block['trade']:
                 if trade['trainer1'] == self.node:
-                    caughtpokes.append(trade['sentby2'])
-                    caughtpokes.remove(trade['sentby1'])
+                    caughtpokes.append(int(trade['sentby2']))
+                    rem.append(int(trade['sentby1']))
                 elif trade['trainer2'] == self.node:
-                    caughtpokes.append(trade['sentby1'])
-                    caughtpokes.remove(trade['sentby2'])
+                    caughtpokes.append(int(trade['sentby1']))
+                    rem.append(int(trade['sentby2']))
+        print("HERE\n\n\n\n\n\n\n\n\n\n\n\n")
+        print(caughtpokes)
+        print(rem)
+        caughtpokes=[x for x in caughtpokes if x not in rem]
         print("Own pokemon received")
         return caughtpokes
 
     def other_pokes(self,nodel):
         caughtpokes=[]
-        print("Pokemon belonging to")
-        print(nodel)
+        rem=[]
+        print("Own pokemon referenced")
         for block in self.chain:
             if block['miner'] == nodel:
                 caughtpokes.append(block['rew'])
             for trade in block['trade']:
                 if trade['trainer1'] == nodel:
-                    caughtpokes.append(trade['sentby2'])
-                    caughtpokes.remove(trade['sentby1'])
+                    caughtpokes.append(int(trade['sentby2']))
+                    rem.append(int(trade['sentby1']))
                 elif trade['trainer2'] == nodel:
-                    caughtpokes.append(trade['sentby1'])
-                    caughtpokes.remove(trade['sentby2'])
+                    caughtpokes.append(int(trade['sentby1']))
+                    rem.append(int(trade['sentby2']))
+        print("HERE\n\n\n\n\n\n\n\n\n\n\n\n")
+        print(caughtpokes)
+        print(rem)
+        caughtpokes=[x for x in caughtpokes if x not in rem]
         print("Pokemon referenced")
         return caughtpokes
 
@@ -128,8 +137,6 @@ class Blockchain(object):
             'sentby2' : sentby2,
             'time' : timesent
         }
-        hashtrans = self.hash(ctrade)
-        ctrade['hash'] = hashtrans
         self.current_trade.append(ctrade)
         return self.last_block['index'] + 1
 

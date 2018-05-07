@@ -197,9 +197,13 @@ def sync():
             for block in blockchain.chain:
                 for trade in block['trade']:
                     for curr in blockchain.current_trade:
-                        if curr['hash'] == trade['hash']:
+                        if curr['sentby1'] == trade['sentby1'] and curr['time'] == trade['time']:
                             blockchain.current_trade.remove(curr)
     return jsonify("Request complete"),200
+
+@app.route('/trade/unc')
+def returnv():
+    return jsonify(blockchain.current_trade)
 
 @app.route('/node/trade',methods=['POST'])
 def add_transaction():
@@ -215,14 +219,20 @@ def traderesponse():
         for o in offers:
             if str(o['node']) == str(request.form['node']) and (str(o['sent']) == str(request.form['Sendpoke'])) and (str(o['rec']) == str(request.form['Rec'])) and (str(o['timestamp']) == str(request.form['tim'])):
                 offers.remove(o)
-                print("Offer removed")
+                print("Offer accepted")
                 break
         blockchain.offers = offers
         url = str(request.form['node']+'/trade/offerresp')
         payload={'node':blockchain.node,'sent':request.form['Sendpoke'],'rec':request.form['Rec'],'tim':request.form['tim'],'status':'Accepted but Unverified'}
         print(url)
         requests.post(url,data=json.dumps(payload))
-        url=str(request.form['node']+'/')
+        values={'trainer1':request.form['node'],'trainer2':blockchain.node,'sentby1':request.form['Sendpoke'],'sentby2':request.form['Rec'],'time':request.form['tim']}
+        index = blockchain.new_transaction(values['trainer1'],values['trainer2'],values['sentby1'],values['sentby2'],values['time'])
+        print(blockchain.current_trade)
+        payload = json.dumps(values)
+        for node in blockchain.nodes:
+            url = str(node+'/trade')
+            requests.post(url,data=payload)
         return redirect('/trade/off')
     else:
         offers = blockchain.offers
@@ -245,28 +255,12 @@ def offresp():
     for k in treqs:
         print(k)
         if str(k['node']) == str(data['node']) and str(k['timestamp']) == str(data['tim']):
-            print("HSAFSAF")
             k['status']=str(data['status'])
             break
     print(treqs)
     blockchain.tradereqs=treqs
     return jsonify("Received")
 
-
-@app.route('/node/trade/new', methods=['POST'])
-def new_transaction():
-    values = request.get_json()
-    required = ['trainer1','trainer2','sentby2','sentby1']
-    if not all(k in values for k in required):
-        return 'Missing values',400
-    values['time'] = time()
-    index = blockchain.new_transaction(values['trainer1'],values['trainer2'],values['sentby1'],values['sentby2'],values['time'])
-    payload = json.dumps(values)
-    print(blockchain.current_trade)
-    for node in blockchain.nodes:
-        url = str(node+'/trade')
-        requests.post(url,data=payload)
-    return jsonify(blockchain.current_trade),200
 
 @app.route('/node/chain', methods=['GET'])
 def full_chain():
