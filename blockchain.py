@@ -65,10 +65,8 @@ class Blockchain(object):
                 elif trade['trainer2'] == self.node:
                     caughtpokes.append(int(trade['sentby1']))
                     rem.append(int(trade['sentby2']))
-        print("HERE\n\n\n\n\n\n\n\n\n\n\n\n")
-        print(caughtpokes)
-        print(rem)
-        caughtpokes=[x for x in caughtpokes if x not in rem]
+        for x in rem:
+            caughtpokes.remove(x)
         print("Own pokemon received")
         return caughtpokes
 
@@ -86,10 +84,8 @@ class Blockchain(object):
                 elif trade['trainer2'] == nodel:
                     caughtpokes.append(int(trade['sentby1']))
                     rem.append(int(trade['sentby2']))
-        print("HERE\n\n\n\n\n\n\n\n\n\n\n\n")
-        print(caughtpokes)
-        print(rem)
-        caughtpokes=[x for x in caughtpokes if x not in rem]
+        for x in rem:
+            caughtpokes.remove(x)
         print("Pokemon referenced")
         return caughtpokes
 

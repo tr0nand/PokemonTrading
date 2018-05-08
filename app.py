@@ -97,6 +97,33 @@ def mine():
     #if len(blockchain.current_trade) == 0:
     #    return jsonify("No transactions to mine"),200
     blockchain.currentmining = True
+    ctrade = blockchain.current_trade
+    present = {}
+    for node in blockchain.nodes:
+        present[node]= blockchain.other_pokes(node)
+    present[blockchain.node]=blockchain.own_pokes()
+    for trade in ctrade:
+        if (int(trade['sentby1']) in present[trade['trainer1']]) and (int(trade['sentby2']) in present[trade['trainer2']]):
+            present[trade['trainer1']].append(int(trade['sentby2']))
+            present[trade['trainer2']].append(int(trade['sentby1']))
+            present[trade['trainer1']].remove(int(trade['sentby1']))
+            present[trade['trainer2']].remove(int(trade['sentby2']))
+        else:
+            if str(trade['trainer1'])==str((blockchain.node)):
+                treqs=blockchain.tradereqs
+                for k in treqs:
+                    if str(k['node']) == str(trade['trainer2']) and str(k['timestamp']) == str(trade['time']):
+                        k['status']="Invalid"
+                        break
+                    blockchain.tradereqs=treqs
+                    print(treqs)
+            else:
+                url = str(trade['trainer1']+'/trade/offerresp')
+                payload={'node':trade['trainer2'],'sent':trade['sentby1'],'rec':trade['sentby2'],'tim':trade['time'],'status':'Invalid'}
+                requests.post(url,data=json.dumps(payload))
+            ctrade.remove(trade)
+            print("Invalid trade removed")
+    blockchain.trade=ctrade
     last_block = blockchain.last_block
     last_proof = last_block['proof']
     proof = blockchain.proof_of_work(last_proof)
@@ -138,6 +165,7 @@ def tradereq():
     if request.method == 'GET':
         treq = blockchain.tradereqs
         pokes=[]
+        chain = blockchain.chain
         for p in treq:
             k={}
             i= pokemonname(p['rec'])
@@ -145,13 +173,18 @@ def tradereq():
             k['rec'] = i
             k['sent'] = j
             k['node'] =p['node']
+            if (p['status'] == 'Accepted but Unverified'):
+                for block in blockchain.chain:
+                    for trade in block['trade']:
+                        if trade['trainer1'] == blockchain.node and str(p['timestamp']) == str(trade['time']):
+                            p['status'] = 'Verified'
             k['status'] = p['status']
             pokes.append(k)
+        blockchain.tradereqs=treq
         return render_template('./tradessent.html',pokes = pokes)
     if request.method == 'POST':
         timestamp=time()
         blockchain.tradereqs.append({'node':request.form['node'],'sent':int(request.form['Sendpoke']),'rec':int(request.form['Rec']),'status':'No response yet','timestamp':timestamp})
-        print(blockchain.tradereqs)
         payload={'node':blockchain.node,'sent':request.form['Sendpoke'],'rec':request.form['Rec'],'timestamp':timestamp}
         url=str(request.form['node']+'/trade/off')
         requests.post(url,data = json.dumps(payload))
@@ -180,9 +213,7 @@ def tradeoffrec():
     if request.method == 'POST':
         print("Offer received")
         data = ast.literal_eval((request.data).decode('utf-8'))
-        print(data)
         blockchain.offers.append({'node':data['node'],'sent':int(data['sent']),'rec':int(data['rec']),'timestamp':data['timestamp']})
-        print(blockchain.offers)
         return jsonify("Received offer")
 
 @app.route('/node/sync',methods=['POST'])
@@ -193,12 +224,14 @@ def sync():
         pass
     if data['length'] > len(blockchain.chain):
         blockchain.chain = data['chain']
-        if(len(blockchain.current_trade)>0):
-            for block in blockchain.chain:
-                for trade in block['trade']:
-                    for curr in blockchain.current_trade:
-                        if curr['sentby1'] == trade['sentby1'] and curr['time'] == trade['time']:
-                            blockchain.current_trade.remove(curr)
+        toff = blockchain.current_trade
+        for block in blockchain.chain:
+            for trade in block['trade']:
+                for t in toff:
+                    if trade == t:
+                        toff.remove(t)
+                        print("Removed")
+        blockchain.current_trade = toff
     return jsonify("Request complete"),200
 
 @app.route('/trade/unc')
@@ -209,7 +242,6 @@ def returnv():
 def add_transaction():
     values = ast.literal_eval((request.data).decode('utf-8'))
     index = blockchain.new_transaction(values['trainer1'],values['trainer2'],values['sentby1'],values['sentby2'],values['time'])
-    print(blockchain.current_trade)
     return jsonify(blockchain.current_trade),200
 
 @app.route('/trade/resp',methods=['POST'])
@@ -224,11 +256,9 @@ def traderesponse():
         blockchain.offers = offers
         url = str(request.form['node']+'/trade/offerresp')
         payload={'node':blockchain.node,'sent':request.form['Sendpoke'],'rec':request.form['Rec'],'tim':request.form['tim'],'status':'Accepted but Unverified'}
-        print(url)
         requests.post(url,data=json.dumps(payload))
         values={'trainer1':request.form['node'],'trainer2':blockchain.node,'sentby1':request.form['Sendpoke'],'sentby2':request.form['Rec'],'time':request.form['tim']}
         index = blockchain.new_transaction(values['trainer1'],values['trainer2'],values['sentby1'],values['sentby2'],values['time'])
-        print(blockchain.current_trade)
         payload = json.dumps(values)
         for node in blockchain.nodes:
             url = str(node+'/trade')
@@ -244,7 +274,6 @@ def traderesponse():
         blockchain.offers = offers
         url = str(request.form['node']+'/trade/offerresp')
         payload={'node':blockchain.node,'sent':request.form['Sendpoke'],'rec':request.form['Rec'],'tim':request.form['tim'],'status':'Cancelled'}
-        print(url)
         requests.post(url,data=json.dumps(payload))
         return redirect('/trade/off')
 
@@ -257,7 +286,6 @@ def offresp():
         if str(k['node']) == str(data['node']) and str(k['timestamp']) == str(data['tim']):
             k['status']=str(data['status'])
             break
-    print(treqs)
     blockchain.tradereqs=treqs
     return jsonify("Received")
 
