@@ -5,6 +5,7 @@ body {
   background-image: url({{url_for('static',filename='img/charbackground.png')}});
   background-repeat:no-repeat;
   background-size:100% 100vh;
+  background-attachment: fixed;
 }
 
 </style>
@@ -12,21 +13,22 @@ body {
 <link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
 <body>
 <center>
+<j >
 <b style="font-size:40px;">Welcome {{name}}</b>
 <br><br><br><br>
 <a href = '/mine' id="mine" onclick="mining()">Mine</a>
 <a href = '/node/chain'>View Blockchain</a>
 <a href = '/trade'>Trade</a>
 <br><br>
-<b style = "font-size:20px">Current Pokemon</b>
-<br><br>
+<b style = "font-size:20px">Current Pokemon</b> </j>
+<br><br><br><br><br><br>
 </center>
 
-<br><br>
+
 {% if pokes %}
 
 {% for k in pokes %}
-<img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}} />
+<img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}} width="320" height="240" />
 <br>
 {{k.name}}
 <br>

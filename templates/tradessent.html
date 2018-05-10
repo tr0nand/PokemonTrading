@@ -5,6 +5,7 @@ body {
   background-image: url({{url_for('static',filename='img/charbackground.png')}});
   background-repeat:no-repeat;
   background-size:100% 100vh;
+  background-attachment: fixed;
 }
 
 </style>
@@ -22,6 +23,6 @@ body {
 
 
 {% for trade in pokes %}
-<b> Pokemon to be sent: {{trade.sent}} Pokemon to be received : {{trade.rec}} Trainer : {{trade.node}}  Status : {{trade.status}}
+<b> Pokemon to be sent: {{trade.sent}}<br> Pokemon to be received : {{trade.rec}}<br> Trainer : {{trade.node}} <br> Status : {{trade.status}}<br>
 <br><br><br>
 {% endfor %}

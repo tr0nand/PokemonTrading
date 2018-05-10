@@ -5,6 +5,7 @@ body {
   background-image: url({{url_for('static',filename='img/charbackground.png')}});
   background-repeat:no-repeat;
   background-size:100% 100vh;
+  background-attachment: fixed;
 }
 
 </style>
@@ -27,7 +28,7 @@ body {
 {% if pokes %}
 
 {% for k in pokes %}
-<a href = "/trade/{{k.num}}"><img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}} />
+<a href = "/trade/{{k.num}}"><img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}}  width="320" height="240" />
 <br>
 {{k.name}}</a>
 <br>

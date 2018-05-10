@@ -5,6 +5,7 @@ body {
   background-image: url({{url_for('static',filename='img/charbackground.png')}});
   background-repeat:no-repeat;
   background-size:100% 100vh;
+  background-attachment: fixed;
 }
 
 </style>
@@ -31,7 +32,7 @@ body {
 <input type = "hidden" name="node" value={{k.trainer}}>
 <input type = "hidden" name="Sendpoke" value={{cur}}>
 <input type = "hidden" name="Rec" value = {{k.num}}>
-<input type = "image" name = "submit" src="/static/img/pokemon/{{ k.id }}" alt = "Submit">
+<input type = "image" name = "submit" src="/static/img/pokemon/{{ k.id }}" alt = "Submit" width="320" height="240" >
 <br>
 {{ k.name }}
 <br>

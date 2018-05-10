@@ -5,6 +5,7 @@ body {
   background-image: url({{url_for('static',filename='img/charbackground.png')}});
   background-repeat:no-repeat;
   background-size:100% 100vh;
+  background-attachment: fixed;
 }
 
 </style>
@@ -27,7 +28,7 @@ body {
 <input type = "hidden" name="Sendpoke" value={{trade.sentid}}>
 <input type = "hidden" name="Rec" value = {{trade.recid}}>
 <input type = "hidden" name = "tim" value = {{trade.time}}>
-<b> Pokemon to be sent: {{trade.sent}} Pokemon to be received : {{trade.rec}} Trainer : {{trade.node}}</b>
+<b> Pokemon to be Received: {{trade.sent}}<br> Pokemon to be Sent : {{trade.rec}}<br> Trainer : {{trade.node}}</b>
 <br>
 <center>
 <input type = "submit" name="submit" value = "Accept">
