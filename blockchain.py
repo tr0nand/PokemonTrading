@@ -73,7 +73,7 @@ class Blockchain(object):
     def other_pokes(self,nodel):
         caughtpokes=[]
         rem=[]
-        print("Own pokemon referenced")
+        print("Other pokemon referenced")
         for block in self.chain:
             if block['miner'] == nodel:
                 caughtpokes.append(block['rew'])
