@@ -318,3 +318,66 @@ def test_replace_chain_rejects_shorter_or_equal(dex):
     mine(bc)
     assert bc.replace_chain(copy.deepcopy(bc.chain)) is False
     assert bc.replace_chain(copy.deepcopy(bc.chain[:1])) is False
+
+
+def test_valid_chain_rejects_malformed_blocks_without_raising(dex):
+    bc = make_chain("A", dex)
+    mine(bc)
+    good = copy.deepcopy(bc.chain)
+    cases = []
+    bad = copy.deepcopy(good)
+    bad[0] = "genesis"
+    cases.append(bad)
+    bad = copy.deepcopy(good)
+    bad[1] = ["not", "a", "dict"]
+    cases.append(bad)
+    for trade in (None, 5, "xx", {"trainer1": "A"}):
+        bad = copy.deepcopy(good)
+        bad[1]["trade"] = trade
+        cases.append(bad)
+    bad = copy.deepcopy(good)
+    bad[0]["trade"] = "xx"
+    cases.append(bad)
+    bad = copy.deepcopy(good)
+    bad[1]["miner"] = ["A"]
+    cases.append(bad)
+    bad = copy.deepcopy(good)
+    bad[0]["miner"] = None
+    cases.append(bad)
+    bad = copy.deepcopy(good)
+    bad[1]["proof"] = "1"
+    cases.append(bad)
+    for trainers in ({"trainer1": ["A"], "trainer2": "B"}, {"trainer1": "A", "trainer2": {"B": 1}}):
+        bad = copy.deepcopy(good)
+        bad[1]["trade"] = [dict(trainers, sentby1=10, sentby2=11, time=1.0)]
+        cases.append(bad)
+    for entry in (None, 7, [1, 2]):
+        bad = copy.deepcopy(good)
+        bad[1]["trade"] = [entry]
+        cases.append(bad)
+    for malformed in cases:
+        assert bc.valid_chain(malformed) is False
+
+
+def test_replace_chain_rejects_non_list_and_unserializable(dex):
+    bc = make_chain("A", dex)
+    before = copy.deepcopy(bc.chain)
+    assert bc.replace_chain({"chain": []}) is False
+    assert bc.replace_chain("nope") is False
+    assert bc.chain == before
+    longer = make_chain("A", dex)
+    longer.chain = copy.deepcopy(bc.chain)
+    mine(longer)
+    bad = copy.deepcopy(longer.chain)
+    bad[1]["timestamp"] = {1, 2}  # ignored by validation, breaks the copy
+    assert bc.replace_chain(bad) is False
+    assert bc.chain == before
+
+
+def test_new_block_requires_hash_on_empty_chain(dex):
+    bc = make_chain("A", dex)
+    bc.chain = []
+    with pytest.raises(ValueError):
+        bc.new_block(proof=0)
+    block = bc.new_block(proof=0, previous_hash="0")
+    assert block["index"] == 1
