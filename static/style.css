@@ -208,3 +208,20 @@ label {
 .unreachable {
   color: #a00;
 }
+.block {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+.block .bhead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.tx {
+  padding: 3px 0 3px 12px;
+}

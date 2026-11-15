@@ -10,6 +10,9 @@
 <body class="game">
 <div class="page">
   <div class="topbar"><h1>Trainer Monitor</h1></div>
+  <nav class="actions">
+    <a class="btn secondary" href="/chain">View Blockchain</a>
+  </nav>
   <p class="stats">{{ count }} trainers &bull; longest chain {{ chain_length }} &bull; {{ total_mons }} pokemon &bull; refreshes every {{ refresh }}s</p>
   {% if top_rares %}
   <div class="panel">

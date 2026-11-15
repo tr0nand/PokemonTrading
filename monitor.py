@@ -13,6 +13,7 @@ Then open http://127.0.0.1:5200 in a browser.
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from urllib.parse import urlparse
 
 import requests
@@ -80,22 +81,109 @@ def label(node_url, user):
     return f"{name} :{port}"
 
 
-def build_dashboard(tracker_url, trainers, dex, calc):
-    """Snapshot the network into render-ready trainer cards."""
-    urls = discover_trainers(tracker_url, trainers)
-    infos = fetch_infos(urls)
+def fetch_longest_chain(urls, infos):
+    """Longest chain across trainers (first reachable as fallback)."""
     best, best_len = None, -1
     for url in urls:
         length = (infos.get(url) or {}).get("length")
         if isinstance(length, int) and length > best_len:
             best, best_len = url, length
-    chain = []
     if best is None:
         best = next((u for u in urls if infos.get(u) is not None), None)
-    if best is not None:
-        payload = _get_json(f"{best}/chain", CHAIN_TIMEOUT)
-        if isinstance(payload, dict) and isinstance(payload.get("chain"), list):
-            chain = payload["chain"]
+    if best is None:
+        return []
+    payload = _get_json(f"{best}/chain", CHAIN_TIMEOUT)
+    if isinstance(payload, dict) and isinstance(payload.get("chain"), list):
+        return payload["chain"]
+    return []
+
+
+def _tlabel(labels, value):
+    if value is None:
+        return "?"
+    if isinstance(value, str):
+        return labels.get(value, value)
+    return str(value)
+
+
+def _mon(dex, nat):
+    try:
+        nat = int(nat)
+        name, rarity = dex[nat]
+        return {"nat": nat, "name": name, "rarity": rarity}
+    except (KeyError, TypeError, ValueError):
+        return {"nat": None, "name": "?", "rarity": 0}
+
+
+def _short(value):
+    return str(value)[:16] if value is not None else "?"
+
+
+def _fmt_time(ts):
+    try:
+        return datetime.fromtimestamp(float(ts)).strftime("%H:%M:%S")
+    except (TypeError, ValueError, OSError, OverflowError):
+        return "?"
+
+
+def format_block(block, labels, dex):
+    """Render-ready block dict, or None for non-dict entries."""
+    if not isinstance(block, dict):
+        return None
+    trades = []
+    raw = block.get("trade") if isinstance(block.get("trade"), list) else []
+    for t in raw:
+        if not isinstance(t, dict):
+            continue
+        try:
+            t1, t2 = t["trainer1"], t["trainer2"]
+            s1, s2 = int(t["sentby1"]), int(t["sentby2"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        trades.append(
+            {
+                "trainer1": _tlabel(labels, t1),
+                "trainer2": _tlabel(labels, t2),
+                "sent1": _mon(dex, s1),
+                "sent2": _mon(dex, s2),
+            }
+        )
+    try:
+        block_hash = _short(Blockchain.hash(block))
+    except (TypeError, ValueError):
+        block_hash = "?"
+    return {
+        "index": block.get("index", "?"),
+        "time": _fmt_time(block.get("timestamp")),
+        "miner": _tlabel(labels, block.get("miner")),
+        "trades": trades,
+        "trade_count": len(trades),
+        "reward": _mon(dex, block.get("rew")),
+        "proof": block.get("proof", "?"),
+        "prev": _short(block.get("previous_hash")),
+        "hash": block_hash,
+    }
+
+
+def build_chain_view(tracker_url, trainers, dex):
+    """Newest-first render-ready blocks."""
+    urls = discover_trainers(tracker_url, trainers)
+    infos = fetch_infos(urls)
+    chain = fetch_longest_chain(urls, infos)
+    labels = {u: label(u, (infos.get(u) or {}).get("user", "")) for u in urls}
+    blocks = []
+    for block in reversed(chain):
+        formatted = format_block(block, labels, dex)
+        if formatted is not None:
+            blocks.append(formatted)
+    return {"blocks": blocks, "count": len(chain)}
+
+
+def build_dashboard(tracker_url, trainers, dex, calc):
+    """Snapshot the network into render-ready trainer cards."""
+    urls = discover_trainers(tracker_url, trainers)
+    infos = fetch_infos(urls)
+    chain = fetch_longest_chain(urls, infos)
     cards = []
     for url in urls:
         info = infos.get(url)
@@ -168,6 +256,11 @@ def create_monitor(tracker_url=None, trainers=(), refresh=15):
     def dashboard():
         data = build_dashboard(tracker_url, trainers, dex, calc)
         return render_template("monitor.html", refresh=refresh, **data)
+
+    @app.route("/chain")
+    def chain_view():
+        data = build_chain_view(tracker_url, trainers, dex)
+        return render_template("chain.html", refresh=refresh, **data)
 
     return app
 

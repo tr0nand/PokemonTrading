@@ -116,6 +116,60 @@ def test_fallback_without_node_info(monkeypatch):
     assert "Mewtwo" in page
 
 
+def test_chain_view_renders_blocks_newest_first(monkeypatch):
+    chain = [
+        {
+            "index": 1,
+            "timestamp": 1000.0,
+            "trade": [],
+            "proof": 0,
+            "previous_hash": "0",
+            "miner": A,
+            "rew": 10,
+        },
+        {
+            "index": 2,
+            "timestamp": 2000.0,
+            "trade": [
+                {
+                    "trainer1": A,
+                    "trainer2": B,
+                    "sentby1": 10,
+                    "sentby2": 150,
+                    "time": 5.0,
+                }
+            ],
+            "proof": 123,
+            "previous_hash": "abcdef1234567890",
+            "miner": B,
+            "rew": 150,
+        },
+    ]
+    fake_network(monkeypatch, [info(A, "Ash"), info(B, "Misty")], chain=chain)
+    page = create_monitor(TRACKER, ()).test_client().get("/chain").data.decode()
+    assert "Blockchain (2 blocks)" in page
+    assert page.find("Block 2") < page.find("Block 1")
+    assert "Caterpie" in page
+    assert "Mewtwo" in page
+    assert ">R5<" in page
+    assert "Misty :5002" in page
+    assert "abcdef1234567890" in page
+    assert "proof 123" in page
+
+
+def test_chain_view_skips_malformed(monkeypatch):
+    fake_network(monkeypatch, [info(A, "Ash"), info(B, "Misty")], chain=["nope", {"index": 3}])
+    page = create_monitor(TRACKER, ()).test_client().get("/chain").data.decode()
+    assert "Block 3" in page
+    assert "Reward: <strong>?</strong>" in page
+
+
+def test_dashboard_links_to_chain(monkeypatch):
+    fake_network(monkeypatch, [info(A, "Ash"), info(B, "Misty")])
+    page = create_monitor(TRACKER, ()).test_client().get("/").data.decode()
+    assert 'href="/chain"' in page
+
+
 def test_rarest_board_tracks_top_tier(monkeypatch):
     from blockchain import Blockchain
     from pokedex import load_dex
