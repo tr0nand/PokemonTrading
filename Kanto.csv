@@ -1,13 +1,13 @@
 Nat,Pokemon,Type I,Type II,Move 1,Move 2,Move 3,Move 4,Rarity
 1,Bulbasaur,Grass,Poison,Move 2,Headbutt,Giga Drain,Vine Whip,2
 2,Ivysaur,Grass,Poison,Move 3,Fury Cutter,Leech Seed,Sunny Day,3
-3,Venusaur,Grass,Poison,Move 4,Tackle,Poisonpowder,Solarbeam,4
+3,Venusaur,Grass,Poison,Move 4,Tackle,Poisonpowder,Solarbeam,5
 4,Charmander,Fire,,Move 5,Slash,Dragonbreath,Ember,2
 5,Charmeleon,Fire,,Move 6,Strength,Dig,Smokescreen,3
-6,Charizard,Fire,Flying,Move 7,Fly,Dragonbreath,Flamethrower,4
+6,Charizard,Fire,Flying,Move 7,Fly,Dragonbreath,Flamethrower,5
 7,Squirtle,Water,,Move 8,Bite,Blizzard,Growl,2
 8,Wartortle,Water,,Move 9,Icy Wind,Dig,Rapid Spin,3
-9,Blastoise,Water,,Move 10,Rapid Spin,Earthquake,Surf,4
+9,Blastoise,Water,,Move 10,Rapid Spin,Earthquake,Surf,5
 10,Caterpie,Bug,,Move 11,String Shot,Tackle,String Shot,1
 11,Metapod,Bug,,Move 12,Harden,Tackle,Harden,1
 12,Butterfree,Bug,Flying,Gust,Psychic,Hyper Beam,Stun Spore,2
@@ -63,7 +63,7 @@ Nat,Pokemon,Type I,Type II,Move 1,Move 2,Move 3,Move 4,Rarity
 62,Poliwrath,Water,Fighting,Dynamicpunch,Hydro Pump,Mach Punch,Body Slam,3
 63,Abra,Psychic,,Confusion,Psybeam,Reflect,Thunderpunch,1
 64,Kadabra,Psychic,,Psychic,Psybeam,Reflect,Thunderpunch,2
-65,Alakazam,Psychic,,Psychic,Ice Punch,Thunder,Shadow Ball,4
+65,Alakazam,Psychic,,Psychic,Ice Punch,Thunder,Shadow Ball,5
 66,Machop,Fighting,,Strength,Rock Smash,Cross Chop,Dig,1
 67,Machoke,Fighting,,Strength,Rock Smash,Cross Chop,Dig,2
 68,Machamp,Fighting,,Thunderpunch,Fire Punch,Strength,Cross Chop,3
@@ -92,7 +92,7 @@ Nat,Pokemon,Type I,Type II,Move 1,Move 2,Move 3,Move 4,Rarity
 91,Cloyster,Water,Ice,Surf,Ice Beam,Swift,Aurora Beam,3
 92,Gastly,Ghost,Poison,Shadow Ball,Psychic,Thief,Sludge Bomb,1
 93,Haunter,Ghost,Poison,Shadow Ball,Psychic,Thief,Sludge Bomb,2
-94,Gengar,Ghost,Poison,Shadow Ball,Psychic,Thief,Sludge Bomb,4
+94,Gengar,Ghost,Poison,Shadow Ball,Psychic,Thief,Sludge Bomb,5
 95,Onix,Rock,Ground,Earthquake,Rock Throw,Strength,Tackle,2
 96,Drowzee,Psychic,,Psychic,Headbutt,Body Slam,Confusion,2
 97,Hypno,Psychic,,Psychic,Headbutt,Body Slam,Confusion,3
@@ -128,25 +128,25 @@ Nat,Pokemon,Type I,Type II,Move 1,Move 2,Move 3,Move 4,Rarity
 127,Pinsir,Bug,,Fury Cutter,Vicegrip,Submission,Earthquake,3
 128,Tauros,Normal,,Take Down,Pursuit,Rock Smash,Body Slam,2
 129,Magikarp,Water,,Tackle,Flail,Tackle,Flail,1
-130,Gyarados,Water,Flying,Waterfall,Dragonbreath,Surf,Earthquake,3
-131,Lapras,Water,Ice,Waterfall,Surf,Ice Beam,Thunderbolt,3
+130,Gyarados,Water,Flying,Waterfall,Dragonbreath,Surf,Earthquake,4
+131,Lapras,Water,Ice,Waterfall,Surf,Ice Beam,Thunderbolt,4
 132,Ditto,Normal,,Tackle,Tackle,Tackle,Tackle,2
-133,Eevee,Normal,,Take Down,Iron Tail,Shadow Ball,Growl,1
+133,Eevee,Normal,,Take Down,Iron Tail,Shadow Ball,Growl,2
 134,Vaporeon,Water,,Waterfall,Surf,Ice Beam,Quick Attack,3
 135,Jolteon,Electric,,Thunderbolt,Pin Missile,Double Kick,Quick Attack,3
 136,Flareon,Fire,,Fire Blast,Flamethrower,Flame Wheel,Quick Attack,3
-137,Porygon,Normal,,Tri Attack,Blizzard,Tackle,Growl,2
+137,Porygon,Normal,,Tri Attack,Blizzard,Tackle,Growl,4
 138,Omanyte,Rock,Water,Surf,Ancientpower,Blizzard,Spike Cannon,2
 139,Omastar,Rock,Water,Surf,Ancientpower,Blizzard,Spike Cannon,3
 140,Kabuto,Rock,Water,Rollout,Giga Drain,Blizzard,Surf,2
 141,Kabutops,Rock,Water,Rollout,Giga Drain,Blizzard,Surf,3
-142,Aerodactyl,Rock,Flying,Ancientpower,Steel Wing,Rock Slide,Fly,3
-143,Snorlax,Normal,,Headbutt,Fire Punch,Thunderpunch,Body Slam,3
-144,Articuno,Ice,Flying,Blizzard,Aerial Ace,Ice Beam,Fly,4
-145,Zapdos,Electric,Flying,Thunder,Thunderbolt,Aerial Ace,Fly,4
-146,Moltres,Fire,Flying,Fire Blast,Flamethrower,Aerial Ace,Fly,4
+142,Aerodactyl,Rock,Flying,Ancientpower,Steel Wing,Rock Slide,Fly,4
+143,Snorlax,Normal,,Headbutt,Fire Punch,Thunderpunch,Body Slam,4
+144,Articuno,Ice,Flying,Blizzard,Aerial Ace,Ice Beam,Fly,5
+145,Zapdos,Electric,Flying,Thunder,Thunderbolt,Aerial Ace,Fly,5
+146,Moltres,Fire,Flying,Fire Blast,Flamethrower,Aerial Ace,Fly,5
 147,Dratini,Dragon,,Dragonbreath,Outrage,Thunderbolt,Headbutt,2
 148,Dragonair,Dragon,,Dragonbreath,Fire Blast,Thunder Wave,Headbutt,3
-149,Dragonite,Dragon,Flying,Twister,Wing Attack,Thunder,Hyper Beam,4
-150,Mewtwo,Psychic,,Psychic,Ice Beam,Fire Blast,Thunder,5
-151,Mew,Psychic,,Psychic,Flamethrower,Shadow Ball,Ice Beam,5
+149,Dragonite,Dragon,Flying,Twister,Wing Attack,Thunder,Hyper Beam,5
+150,Mewtwo,Psychic,,Psychic,Ice Beam,Fire Blast,Thunder,6
+151,Mew,Psychic,,Psychic,Flamethrower,Shadow Ball,Ice Beam,6
