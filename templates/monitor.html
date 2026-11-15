@@ -31,7 +31,7 @@
       <summary>
         <span class="tname">{{ t.label }}</span>
         {% if t.reachable %}
-        <span class="tcounts">{{ t.mons|length }} pokemon{% for r in [1, 2, 3, 4, 5] %}{% if t.counts[r] %} &bull; R{{ r }}&times;{{ t.counts[r] }}{% endif %}{% endfor %}</span>
+        <span class="tcounts">{{ t.mons|length }} pokemon{% for r in [1, 2, 3, 4, 5, 6] %}{% if t.counts[r] %} &bull; R{{ r }}&times;{{ t.counts[r] }}{% endif %}{% endfor %}</span>
         <span class="tmeta">Block {{ t.length if t.length is not none else "?" }} &bull; {{ t.pending }} pending</span>
         {% else %}
         <span class="unreachable">unreachable</span>

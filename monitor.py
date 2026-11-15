@@ -207,7 +207,7 @@ def build_dashboard(tracker_url, trainers, dex, calc):
                     }
                 )
         info = info or {}
-        counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}
         for m in mons:
             counts[m["rarity"]] += 1
         cards.append(

@@ -42,7 +42,7 @@ def test_choose_miner_respects_weights():
 def test_summarize_holdings_counts_and_rares():
     dex = {10: ("Caterpie", 1), 150: ("Mewtwo", 5), 151: ("Mew", 5), 6: ("Charizard", 4)}
     summary = summarize_holdings({0: [10, 150], 1: [6, 151], 2: []}, dex)
-    assert summary["by_rarity"] == {1: 1, 2: 0, 3: 0, 4: 1, 5: 2}
+    assert summary["by_rarity"] == {1: 1, 2: 0, 3: 0, 4: 1, 5: 2, 6: 0}
     assert [(r["owner"], r["name"]) for r in summary["rares"]] == [
         (1, "Mew"),
         (0, "Mewtwo"),

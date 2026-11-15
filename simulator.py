@@ -60,7 +60,7 @@ def choose_miner(weights, rng):
 
 def summarize_holdings(holdings_by_trainer, dex):
     """Tally a {trainer_index: [dex numbers]} map into counts and rares."""
-    by_rarity = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    by_rarity = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}
     rares = []
     for owner, nats in holdings_by_trainer.items():
         for nat in nats:
