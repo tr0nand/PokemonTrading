@@ -1,38 +1,71 @@
 # PokemonTrading
-A blockchain based Pokemon Trading game
 
-## Basis:
-Want to be the ultimate Pokemon master like Red and capture all 151 Pokemon (Gen-1). Scared that Team Rocket might steal your Pokemon away? Utilizing a distributed ledger like Blockchain for this game ensures that all Pokemon rewards are accounted for, and you can't loose your Pokemon no matter what. Capture and trade Pokemon cause you Gotta Catch 'Em All .
+A blockchain-based Pokemon trading game. Be the ultimate Pokemon master and
+catch all 151 Gen-1 Pokemon: mine blocks to capture Pokemon, then trade them
+with other trainers over a shared distributed ledger. Gotta catch 'em all.
 
-## Requirements
-This game is a python based game and all the requirements are present in the requirements.txt file.
+## Quickstart
 
-Make sure the version of Python being used is 3.x  
+Requirements: Python 3.10+.
 
-Type the following command in the terminal to obtain all the required dependencies.
->pip install -r requirements.txt  
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python demo.py
+```
 
-## How to play the game
-Navigate to the main directory and type  
->python nodetracker.py [nodeportno]  
+Then open http://127.0.0.1:5010 in your browser (and :5011 for a second
+trainer). `demo.py` starts a tracker plus two trainers; Ctrl-C stops
+everything. Options: `--tracker-port`, `--trainers`, `--base-port`.
 
-Where nodeportno is the port on the localhost server on which the nodetracker runs
+To run processes by hand instead:
 
-For each individual node/trainer taking part in the game type
+```bash
+python nodetracker.py 5009
+python app.py 5009 5010   # tracker port, then this trainer's port
+python app.py 5009 5011
+```
 
->python app.py [nodeportno] [trainerportno]
+## How to play
 
-Where nodeportno is the same as before and trainerportno is the port on which the trainer node runs.
+1. Enter a trainer name on each trainer's page.
+2. Press **Mine** to forge a block and capture its reward Pokemon.
+3. Press **Trade**, pick one of your Pokemon, then pick a Pokemon another
+   trainer owns. They accept (or reject) from Trade Offers; once a block
+   carrying the trade is mined, the request shows Verified.
 
-Go to your browser visit localhost:trainerportno to start the game  
+Mining incentives: empty blocks only yield common (rarity-1) Pokemon, while
+blocks carrying more trades unlock rarer ones — up to rarity-5 legendaries
+at 20+ trades.
 
-You can start as many instances of nodes at a time to simulate different trainers
+## How it works
 
-## Game Specifics
+One tracker process introduces trainers to each other; each trainer runs its
+own Flask app holding a full copy of the chain. Consensus is
+longest-valid-chain: a trainer only adopts a longer chain whose hashes link,
+whose proofs meet the difficulty (SHA-256 starting with `0000`), whose
+rewards fit their trade counts, and whose trades spend Pokemon the traders
+actually own. Pending trades are validated without mutating the queue, and a
+re-entrant lock guards chain state instead of a spin-wait.
 
-The game utilizes a distributed ledger in the form of a blockchain to keep track of all trades between trainers as well as Pokemon captured. A Pokemon can be captured by mining a block on the blockchain as the reward. Mining blocks which carry more number of transactions can result in capturing a rarer Pokemon. Once captured, these pokemon can then be traded with other trainers and they are verified once the block is mined. The incentive for miners to mine transactions are the possibilities of obtaining rarer Pokemon.
+## Testing
 
-## Blockchain Specifics
-The blockchain utilized has a very simple consensus algorithm to ensure agreement between miners. Every node/trainer has mining capability and the current longest chain is considered to be the correct chain. With a large number of traders this helps rule out a 51% chain attack.
+```bash
+source .venv/bin/activate
+python -m pytest tests/ -q
+```
 
-The mining algorithm utilizes a simple proof of work algorithm where the SHA256 hash of two values are calculated untill the last 4 digits are found to be 0. The complexity of this can be increased by increasing the number of digits set to 0.
+## Layout
+
+- `app.py` — trainer node (browser UI + peer API)
+- `nodetracker.py` — trainer registry
+- `blockchain.py` — blocks, trades, proof-of-work, consensus
+- `pokedex.py` — Gen-1 dex lookups and reward pools (`Kanto.csv`)
+- `demo.py` — one-command local game
+- `templates/` + `static/` — pages, sprites, styles
+
+## Known limits
+
+Chains live in memory: restarting a trainer resets it to a fresh genesis
+block. Peer endpoints have no authentication, so only play on localhost.
