@@ -82,10 +82,11 @@ def test_home_shows_collection(dex):
     assert pokemon_name(dex, genesis_mon) in page
 
 
-def test_mine_appends_block_and_broadcasts(posts):
+def test_mine_appends_block_and_broadcasts(posts, monkeypatch):
     application = create_app(A_URL)
     client = application.test_client()
     peer(client, B_URL)
+    monkeypatch.setattr(trainer_app, "_get_json", lambda url, timeout=10: None)
     resp = client.get("/mine")
     assert resp.status_code == 302
     assert len(application.blockchain.chain) == 2
@@ -145,7 +146,7 @@ def test_mine_notifies_remote_requester_of_invalid(posts):
     assert (f"{B_URL}/trade/offerresp", {"node": A_URL, "tim": 9.0, "status": "Invalid"}) in posts
 
 
-def test_full_trade_flow(posts, dex):
+def test_full_trade_flow(posts, dex, monkeypatch):
     app_a, ca, app_b, cb = make_pair()
     set_user(ca, "Ash")
     set_user(cb, "Misty")
@@ -192,12 +193,19 @@ def test_full_trade_flow(posts, dex):
     assert app_b.blockchain.offers == []
     resp_payload = next(p for u, p in posts if u == f"{A_URL}/trade/offerresp")
     assert resp_payload["status"] == "Accepted but Unverified"
-    tx = next(p for u, p in posts if u == f"{A_URL}/trade")
-    assert tx["trainer1"] == A_URL and tx["trainer2"] == B_URL
+    assert not [u for u, _ in posts if u.endswith("/trade")]
+    assert len(app_b.blockchain.current_trade) == 1
+    assert app_a.blockchain.current_trade == []
 
-    # Ash receives both, mines, and the request shows verified.
+    # Ash receives the acceptance, then mines, pulling the trade.
     assert ca.post("/node/trade/offerresp", json=resp_payload).status_code == 200
-    assert ca.post("/node/trade", json=tx).status_code == 200
+
+    def fake_get(url, timeout=10):
+        if url == "http://127.0.0.1:5002/trade/unc":
+            return list(app_b.blockchain.current_trade)
+        return None
+
+    monkeypatch.setattr(trainer_app, "_get_json", fake_get)
     before = Counter(app_a.blockchain.own_pokes())
     ca.get("/mine")
     assert len(app_a.blockchain.last_block["trade"]) == 1
@@ -448,6 +456,43 @@ def test_accept_cancelled_when_queue_fails(posts, monkeypatch):
     assert resp.status_code == 302
     assert (f"{A_URL}/trade/offerresp", {"node": B_URL, "tim": "4.0", "status": "Cancelled"}) in posts
     assert not [u for u, _ in posts if u.endswith("/trade")]
+
+
+def test_mine_pulls_and_dedupes_peer_mempool(monkeypatch, posts):
+    application = create_app(A_URL)
+    client = application.test_client()
+    mine_as(application, A_URL)
+    mine_as(application, B_URL)
+    a_mon = application.blockchain.own_pokes()[0]
+    b_mon = application.blockchain.other_pokes(B_URL)[0]
+    peer(client, B_URL)
+    tx = {
+        "trainer1": A_URL,
+        "trainer2": B_URL,
+        "sentby1": a_mon,
+        "sentby2": b_mon,
+        "time": 1.0,
+    }
+
+    def fake_get(url, timeout=10):
+        if url.endswith("/trade/unc"):
+            return [dict(tx), dict(tx), "garbage", {"bogus": 1}]
+        return None
+
+    monkeypatch.setattr(trainer_app, "_get_json", fake_get)
+    client.get("/mine")
+    assert application.blockchain.last_block["trade"] == [tx]
+
+
+def test_mine_survives_dead_peer_pull(monkeypatch, posts):
+    application = create_app(A_URL)
+    client = application.test_client()
+    peer(client, B_URL)
+    monkeypatch.setattr(trainer_app, "_get_json", lambda url, timeout=10: None)
+    resp = client.get("/mine")
+    assert resp.status_code == 302
+    assert len(application.blockchain.chain) == 2
+    assert application.blockchain.last_block["trade"] == []
 
 
 def test_sync_malformed_chain_keeps_without_500():

@@ -12,6 +12,7 @@ render unchanged.
 import argparse
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 from flask import Flask, jsonify, redirect, render_template, request, url_for
@@ -21,6 +22,8 @@ from pokedex import pokemon_name
 
 POST_TIMEOUT = 5
 GET_TIMEOUT = 10
+PULL_TIMEOUT = 3
+PULL_WORKERS = 20
 
 STATUS_NO_RESPONSE = "No response yet"
 STATUS_ACCEPTED = "Accepted but Unverified"
@@ -75,6 +78,45 @@ def _notify_invalid_remote(trade):
             "status": STATUS_INVALID,
         },
     )
+
+
+def _peer_unc_url(node_url):
+    base = node_url[: -len("/node")] if node_url.endswith("/node") else node_url
+    return f"{base}/trade/unc"
+
+
+def _pull_mempool(blockchain, peers):
+    """Merge peers' pending trades into our queue (deduplicated).
+
+    Pulling at mine time replaces broadcast-on-accept: one small fan-out per
+    block instead of one per trade, which is what lets large networks breathe.
+    """
+    with ThreadPoolExecutor(max_workers=PULL_WORKERS) as pool:
+        results = list(
+            pool.map(lambda p: _get_json(_peer_unc_url(p), PULL_TIMEOUT), peers)
+        )
+    with blockchain.lock:
+        seen = {blockchain._trade_key(t) for t in blockchain.current_trade}
+        for trades in results:
+            if not isinstance(trades, list):
+                continue
+            for trade in trades:
+                if not isinstance(trade, dict):
+                    continue
+                try:
+                    key = blockchain._trade_key(trade)
+                    if key in seen:
+                        continue
+                    blockchain.new_transaction(
+                        trade["trainer1"],
+                        trade["trainer2"],
+                        trade["sentby1"],
+                        trade["sentby2"],
+                        trade["time"],
+                    )
+                except (KeyError, TypeError, ValueError):
+                    continue
+                seen.add(key)
 
 
 def _refresh_outgoing_statuses(blockchain):
@@ -162,6 +204,9 @@ def create_app(node_url, tracker_url=None):
 
     @app.route("/mine", methods=["GET"])
     def mine():
+        with blockchain.lock:
+            peers = sorted(blockchain.nodes)
+        _pull_mempool(blockchain, peers)
         with blockchain.lock:
             valid, invalid = blockchain.filter_valid_trades()
             blockchain.current_trade = valid
@@ -370,22 +415,14 @@ def create_app(node_url, tracker_url=None):
                 )
             except ValueError:
                 accepted = False
+        # No broadcast here: whoever mines next pulls pending trades from
+        # every peer (see _pull_mempool). One fan-out per block instead of
+        # one per trade.
         if accepted:
             _post_json(
                 f"{node}/trade/offerresp",
                 {"node": blockchain.node, "tim": tim, "status": STATUS_ACCEPTED},
             )
-            values = {
-                "trainer1": node,
-                "trainer2": blockchain.node,
-                "sentby1": offer["sent"],
-                "sentby2": offer["rec"],
-                "time": tim,
-            }
-            with blockchain.lock:
-                peers = sorted(blockchain.nodes)
-            for peer in peers:
-                _post_json(f"{peer}/trade", values)
         else:
             _post_json(
                 f"{node}/trade/offerresp",

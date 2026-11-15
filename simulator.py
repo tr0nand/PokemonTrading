@@ -105,6 +105,8 @@ class Sim:
         self.calc = Blockchain("sim")  # local holdings math, never served
         self.stop = threading.Event()
         self.session = requests.Session()
+        self.accepted = 0
+        self.accepted_lock = threading.Lock()
         self.log_file = open(args.log, "w", buffering=1) if args.log else None
         # Shared chain snapshot: the dev server closes every connection, so
         # request volume (not pooling) is what must stay within localhost's
@@ -167,7 +169,7 @@ class Sim:
             if time.time() >= deadline:
                 self.log(f"FATAL: servers never came up: {', '.join(missing)}")
                 raise SystemExit(1)
-            time.sleep(2)
+            time.sleep(min(2, max(0, deadline - time.time())))
 
     def wait_ready(self):
         deadline = time.time() + 300
@@ -209,11 +211,6 @@ class Sim:
             self._chain_cached_at = time.time()
             self._chain_cached = chain
         return chain
-
-    def pending_of(self, i):
-        return with_retries(
-            lambda: self.session.get(f"{self.roots[i]}/trade/unc", timeout=10).json()
-        )
 
     def mine(self, i, timeout):
         """Mine on trainer i, failing loudly on HTTP errors (wrong server)."""
@@ -259,7 +256,7 @@ class Sim:
                 )
                 if r.status_code != 200:
                     continue
-                s.post(
+                r2 = s.post(
                     f"{self.roots[b]}/trade/resp",
                     data={
                         "submit": "Accept",
@@ -270,6 +267,9 @@ class Sim:
                     },
                     timeout=10,
                 )
+                if r2.ok:
+                    with self.accepted_lock:
+                        self.accepted += 1
             except Exception as exc:
                 self.log(f"bot{i} err {type(exc).__name__}")
             time.sleep(self.rng.uniform(0, 2 / self.args.eagerness))
@@ -284,15 +284,20 @@ class Sim:
         deadline = time.time() + self.args.minutes * 60
         rounds = 0
         last_mine = 0.0
+        mined_mark = 0
         while time.time() < deadline:
             time.sleep(2)
             miner = choose_miner(self.weights, self.rng)
+            with self.accepted_lock:
+                unmined = self.accepted - mined_mark
             try:
-                if len(self.pending_of(miner)) < self.args.target_pending:
+                if unmined < self.args.target_pending:
                     continue
                 wait = self.args.min_round_interval - (time.time() - last_mine)
                 if wait > 0:
                     time.sleep(wait)
+                with self.accepted_lock:
+                    mined_mark = self.accepted
                 self.mine(miner, timeout=90)
                 last_mine = time.time()
                 block = self.chain_of(miner)[-1]
