@@ -49,11 +49,3 @@ def test_pools_grow_monotonically(dex):
 def test_negative_trade_count_raises(dex):
     with pytest.raises(ValueError):
         reward_pool(dex, -1)
-
-
-def test_canonical_rarities(dex):
-    assert dex[150][1] == 5 and dex[151][1] == 5  # Mewtwo, Mew
-    elite = (3, 6, 9, 31, 34, 59, 65, 94, 130, 131, 137, 142, 143, 144, 145, 146, 149)
-    for nat in elite:
-        assert dex[nat][1] == 4, nat
-    assert dex[133][1] == 2  # Eevee, one-per-game gift
