@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
-from blockchain import Blockchain
+from blockchain import DEFAULT_DIFFICULTY, Blockchain
 from pokedex import pokemon_name
 
 POST_TIMEOUT = 5
@@ -144,11 +144,11 @@ def register_with_tracker(tracker_url, node_url, attempts=5, delay=1.0):
     return False
 
 
-def create_app(node_url, tracker_url=None):
+def create_app(node_url, tracker_url=None, difficulty=DEFAULT_DIFFICULTY):
     """Build the trainer Flask app. Testable without network or processes."""
     app = Flask(__name__, template_folder="templates")
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
-    blockchain = Blockchain(node_url)
+    blockchain = Blockchain(node_url, difficulty=difficulty)
     app.blockchain = blockchain
     app.config["TRACKER_URL"] = tracker_url
 

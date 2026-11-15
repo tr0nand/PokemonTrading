@@ -19,7 +19,7 @@
     <h2>Rarest held (R{{ max_rarity }})</h2>
     <div>
       {% for r in top_rares %}
-      <span class="chip">{{ r.name }}<span class="pill r{{ r.rarity }}">R{{ r.rarity }}</span> <span class="trainer">{{ r.trainer }}</span></span>
+      <span class="chip"><img src="/static/img/pokemon/{{ r.nat }}.png" alt="{{ r.name }}"> {{ r.name }}<span class="pill r{{ r.rarity }}">R{{ r.rarity }}</span> <span class="trainer">{{ r.trainer }}</span></span>
       {% endfor %}
     </div>
   </div>

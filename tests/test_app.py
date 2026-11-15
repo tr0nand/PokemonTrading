@@ -548,6 +548,11 @@ def test_start_form_has_submit_button():
     assert b'type="submit"' in client.get("/").data
 
 
+def test_create_app_difficulty_passthrough():
+    assert create_app(A_URL, difficulty=1).blockchain.difficulty == 1
+    assert create_app(A_URL).blockchain.difficulty == 4
+
+
 def test_node_info_reports_status():
     application = create_app(A_URL)
     client = application.test_client()
