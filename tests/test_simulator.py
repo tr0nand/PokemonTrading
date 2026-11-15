@@ -4,6 +4,7 @@ import pytest
 import requests
 
 from simulator import (
+    Sim,
     build_parser,
     choose_miner,
     parse_weights,
@@ -58,6 +59,10 @@ def test_parser_defaults():
     assert args.accept_rate == 1.0
     assert args.fair_only is False
     assert args.serve_after is False
+    assert args.startup_stagger == 1.0
+    assert args.funding_settle == 1.0
+    assert args.chain_cache == 10.0
+    assert args.min_round_interval == 15.0
 
 
 def test_with_retries_recovers_and_gives_up():
@@ -77,3 +82,26 @@ def test_with_retries_recovers_and_gives_up():
 
     with pytest.raises(requests.ConnectionError):
         with_retries(dead, attempts=2, delay=0)
+
+
+def test_shared_chain_caches_within_ttl(monkeypatch):
+    from types import SimpleNamespace
+
+    args = build_parser().parse_args(["--trainers", "3", "--chain-cache", "100"])
+    sim = Sim(args)
+    calls = []
+
+    def fake_get(*get_args, **kwargs):
+        calls.append(1)
+        return SimpleNamespace(json=lambda: {"chain": [1, 2]})
+
+    monkeypatch.setattr(sim.session, "get", fake_get)
+    assert sim.shared_chain() == [1, 2]
+    assert sim.shared_chain() == [1, 2]
+    assert len(calls) == 1
+
+    uncached = Sim(build_parser().parse_args(["--trainers", "3", "--chain-cache", "0"]))
+    monkeypatch.setattr(uncached.session, "get", fake_get)
+    uncached.shared_chain()
+    uncached.shared_chain()
+    assert len(calls) == 3

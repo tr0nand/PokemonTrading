@@ -30,7 +30,6 @@ from app import create_app, register_with_tracker
 from blockchain import Blockchain
 from nodetracker import create_tracker
 from pokedex import load_dex
-from requests.adapters import HTTPAdapter
 
 SETTLE = 1.5
 
@@ -106,9 +105,14 @@ class Sim:
         self.calc = Blockchain("sim")  # local holdings math, never served
         self.stop = threading.Event()
         self.session = requests.Session()
-        self.session.mount("http://", HTTPAdapter(pool_connections=128, pool_maxsize=8))
-        self.session.mount("https://", HTTPAdapter(pool_connections=128, pool_maxsize=8))
         self.log_file = open(args.log, "w", buffering=1) if args.log else None
+        # Shared chain snapshot: the dev server closes every connection, so
+        # request volume (not pooling) is what must stay within localhost's
+        # ephemeral-port budget. Bots share one cached view instead of each
+        # fetching the full chain per trade.
+        self._chain_lock = threading.Lock()
+        self._chain_cached_at = 0.0
+        self._chain_cached = None
 
     def log(self, msg):
         line = f"{time.strftime('%H:%M:%S')} {msg}"
@@ -131,7 +135,7 @@ class Sim:
         app.run(host="0.0.0.0", port=self.args.base_port + i, threaded=True, use_reloader=False)
 
     def wait_ready(self):
-        deadline = time.time() + 120
+        deadline = time.time() + 300
         while time.time() < deadline:
             try:
                 nodes = self.session.get(f"{self.tracker_url}/nodes", timeout=5).json()["nodes"]
@@ -156,6 +160,21 @@ class Sim:
             lambda: self.session.get(f"{self.nodes[i]}/chain", timeout=15).json()["chain"]
         )
 
+    def shared_chain(self):
+        with self._chain_lock:
+            if (
+                self._chain_cached is not None
+                and time.time() - self._chain_cached_at < self.args.chain_cache
+            ):
+                return self._chain_cached
+        chain = with_retries(
+            lambda: self.session.get(f"{self.nodes[0]}/chain", timeout=15).json()["chain"]
+        )
+        with self._chain_lock:
+            self._chain_cached_at = time.time()
+            self._chain_cached = chain
+        return chain
+
     def pending_of(self, i):
         return with_retries(
             lambda: self.session.get(f"{self.roots[i]}/trade/unc", timeout=10).json()
@@ -165,20 +184,18 @@ class Sim:
         for _ in range(self.args.funding_rounds):
             for i in range(self.args.trainers):
                 with_retries(lambda: self.session.get(f"{self.roots[i]}/mine", timeout=60))
-                time.sleep(0.3)
+                time.sleep(self.args.funding_settle)
         time.sleep(SETTLE)
         lengths = sorted({len(self.chain_of(i)) for i in range(self.args.trainers)})
         self.log(f"funding done, chain lengths: {lengths}")
 
     def bot(self, i):
         s = requests.Session()
-        s.mount("http://", HTTPAdapter(pool_connections=8, pool_maxsize=4))
-        s.mount("https://", HTTPAdapter(pool_connections=8, pool_maxsize=4))
         n = self.args.trainers
         while not self.stop.is_set():
             try:
                 a, b = self.rng.sample(range(n), 2)
-                chain = s.get(f"{self.nodes[0]}/chain", timeout=15).json()["chain"]
+                chain = self.shared_chain()
                 ha = self.calc.holdings(self.nodes[a], chain)
                 hb = self.calc.holdings(self.nodes[b], chain)
                 if not ha or not hb:
@@ -222,13 +239,18 @@ class Sim:
             t.start()
         deadline = time.time() + self.args.minutes * 60
         rounds = 0
+        last_mine = 0.0
         while time.time() < deadline:
             time.sleep(2)
             miner = choose_miner(self.weights, self.rng)
             try:
                 if len(self.pending_of(miner)) < self.args.target_pending:
                     continue
+                wait = self.args.min_round_interval - (time.time() - last_mine)
+                if wait > 0:
+                    time.sleep(wait)
                 with_retries(lambda: self.session.get(f"{self.roots[miner]}/mine", timeout=90))
+                last_mine = time.time()
                 block = self.chain_of(miner)[-1]
                 rew = int(block["rew"])
                 name, rarity = self.dex[rew]
@@ -280,6 +302,10 @@ def build_parser():
     parser.add_argument("--funding-rounds", type=int, default=3)
     parser.add_argument("--tracker-port", type=int, default=5109)
     parser.add_argument("--base-port", type=int, default=5110)
+    parser.add_argument("--startup-stagger", type=float, default=1.0)
+    parser.add_argument("--funding-settle", type=float, default=1.0)
+    parser.add_argument("--chain-cache", type=float, default=10.0)
+    parser.add_argument("--min-round-interval", type=float, default=15.0)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--results", default="sim_results.json")
     parser.add_argument("--log", default=None)
@@ -302,13 +328,23 @@ def main(argv=None):
         parser.error("--target-pending must be at least 1")
     if args.funding_rounds < 1:
         parser.error("--funding-rounds must be at least 1")
+    if args.startup_stagger < 0:
+        parser.error("--startup-stagger cannot be negative")
+    if args.funding_settle < 0:
+        parser.error("--funding-settle cannot be negative")
+    if args.chain_cache < 0:
+        parser.error("--chain-cache cannot be negative")
+    if args.min_round_interval < 0:
+        parser.error("--min-round-interval cannot be negative")
     try:
         sim = Sim(args)
     except ValueError as exc:
         parser.error(str(exc))
     threading.Thread(target=sim.run_tracker, daemon=True).start()
+    time.sleep(1)  # tracker first, then staggered trainers
     for i in range(args.trainers):
         threading.Thread(target=sim.run_trainer, args=(i,), daemon=True).start()
+        time.sleep(args.startup_stagger)
     sim.wait_ready()
     sim.phase_funding()
     rounds = sim.phase_trading()

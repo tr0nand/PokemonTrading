@@ -75,6 +75,11 @@ rarity-losing trades), plus `--minutes`, `--target-pending`,
 keep browsing when the run ends. Results land in `sim_results.json`
 (ignored by git).
 
+Pacing knobs keep big runs inside what localhost can sustain (the dev
+server closes every connection, so request volume is the limit):
+`--startup-stagger`, `--funding-settle`, `--chain-cache` (shared chain
+snapshot TTL), and `--min-round-interval`.
+
 ## Layout
 
 - `app.py` — trainer node (browser UI + peer API)
