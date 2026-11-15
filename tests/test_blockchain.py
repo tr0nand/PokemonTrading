@@ -13,8 +13,8 @@ def dex():
     return load_dex()
 
 
-def make_chain(node="A", dex=None):
-    return Blockchain(node, dex=dex)
+def make_chain(node="A", dex=None, **kwargs):
+    return Blockchain(node, dex=dex, **kwargs)
 
 
 def mine(bc):
@@ -230,6 +230,26 @@ def test_proof_of_work_finds_valid_proof(dex):
     last = bc.last_block
     proof = bc.proof_of_work(last["proof"])
     assert bc.valid_proof(last["proof"], proof, bc.hash(last))
+
+
+def test_difficulty_zero_mines_instantly(dex):
+    bc = make_chain("A", dex, difficulty=0)
+    assert bc.proof_of_work(bc.last_block["proof"]) == 0
+    assert bc.valid_proof(1, 2, "abc", 0) is True
+    assert bc.valid_chain(bc.chain) is True
+
+
+def test_valid_proof_default_matches_difficulty_4():
+    assert Blockchain.valid_proof(7, 42, "deadbeef") == Blockchain.valid_proof(
+        7, 42, "deadbeef", 4
+    )
+
+
+def test_difficulty_validates_range(dex):
+    with pytest.raises(ValueError):
+        make_chain("A", dex, difficulty=-1)
+    with pytest.raises(ValueError):
+        make_chain("A", dex, difficulty=65)
 
 
 def test_valid_chain_accepts_mined(dex):

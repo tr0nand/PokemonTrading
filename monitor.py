@@ -230,7 +230,12 @@ def build_dashboard(tracker_url, trainers, dex, calc):
     top_rares = []
     if max_rarity >= 4:
         top_rares = [
-            {"trainer": t["label"], "name": m["name"], "rarity": m["rarity"]}
+            {
+                "trainer": t["label"],
+                "nat": m["nat"],
+                "name": m["name"],
+                "rarity": m["rarity"],
+            }
             for t in cards
             for m in t["mons"]
             if m["rarity"] == max_rarity

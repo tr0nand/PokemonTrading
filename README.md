@@ -70,7 +70,8 @@ python simulator.py --trainers 4 --miner-weights 50,25,12.5,12.5 \
 Knobs: `--trainers` (bot count), `--miner-weights` (per-trainer mining
 share, default uniform), `--eagerness` (mean trades/sec/bot),
 `--accept-rate` (offer acceptance probability), `--fair-only` (bots reject
-rarity-losing trades), plus `--minutes`, `--target-pending`,
+rarity-losing trades), `--difficulty` (proof-of-work leading zeros, 0-6;
+every node on a network must share it), plus `--minutes`, `--target-pending`,
 `--funding-rounds`, `--seed`, `--results`, `--log`, and `--serve-after` to
 keep browsing when the run ends. Results land in `sim_results.json`
 (ignored by git).

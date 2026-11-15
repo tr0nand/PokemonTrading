@@ -10,6 +10,8 @@ are faithful to the 2018 game; the known defects are fixed:
   (:meth:`Blockchain.valid_chain`); the original trusted any longer chain.
 - A re-entrant thread lock (:attr:`Blockchain.lock`) guards chain state
   instead of the ``currentmining`` spin-wait flag.
+- Mining difficulty (leading-zero count) is configurable per node; every
+  node on a network must use the same value or chains fork permanently.
 """
 
 import hashlib
@@ -20,14 +22,17 @@ from time import time
 
 from pokedex import load_dex, reward_pool
 
-DIFFICULTY_PREFIX = "0000"
+DEFAULT_DIFFICULTY = 4
 
 
 class Blockchain:
     """One trainer's view of the shared Pokemon chain."""
 
-    def __init__(self, node, dex=None):
+    def __init__(self, node, dex=None, difficulty=DEFAULT_DIFFICULTY):
+        if not isinstance(difficulty, int) or not 0 <= difficulty <= 64:
+            raise ValueError(f"difficulty must be an int 0..64: {difficulty!r}")
         self.node = node
+        self.difficulty = difficulty
         self.chain = []
         self.current_trade = []
         self.nodes = set()
@@ -111,14 +116,14 @@ class Blockchain:
         with self.lock:
             last_hash = self.hash(self.chain[-1])
         proof = 0
-        while not self.valid_proof(last_proof, proof, last_hash):
+        while not self.valid_proof(last_proof, proof, last_hash, self.difficulty):
             proof += 1
         return proof
 
     @staticmethod
-    def valid_proof(last_proof, proof, last_hash):
+    def valid_proof(last_proof, proof, last_hash, difficulty=DEFAULT_DIFFICULTY):
         guess = str(str(last_proof + proof) + str(last_hash)).encode()
-        return hashlib.sha256(guess).hexdigest()[:4] == DIFFICULTY_PREFIX
+        return hashlib.sha256(guess).hexdigest()[:difficulty] == "0" * difficulty
 
     # -- holdings ------------------------------------------------------
     def holdings(self, trainer, chain=None):
@@ -288,7 +293,9 @@ class Blockchain:
             prev_hash = self.hash(prev)
             if block["previous_hash"] != prev_hash:
                 return False
-            if not self.valid_proof(prev["proof"], block["proof"], prev_hash):
+            if not self.valid_proof(
+                prev["proof"], block["proof"], prev_hash, self.difficulty
+            ):
                 return False
             try:
                 if int(block["rew"]) not in reward_pool(

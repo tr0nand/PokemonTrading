@@ -59,6 +59,7 @@ def test_parser_defaults():
     assert args.accept_rate == 1.0
     assert args.fair_only is False
     assert args.serve_after is False
+    assert args.difficulty == 4
     assert args.startup_stagger == 1.0
     assert args.funding_settle == 1.0
     assert args.chain_cache == 10.0

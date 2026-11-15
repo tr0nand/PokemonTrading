@@ -128,7 +128,7 @@ class Sim:
         )
 
     def run_trainer(self, i):
-        app = create_app(self.nodes[i], self.tracker_url)
+        app = create_app(self.nodes[i], self.tracker_url, difficulty=self.args.difficulty)
         threading.Thread(
             target=register_with_tracker,
             args=(self.tracker_url, self.nodes[i]),
@@ -190,7 +190,10 @@ class Sim:
                 requests.post(f"{self.roots[i]}/", data={"user": f"Sim-{i}"}, timeout=5)
             except Exception as exc:
                 self.log(f"username {i} failed: {exc}")
-        self.log(f"ready: {self.args.trainers} trainers peered")
+        self.log(
+            f"ready: {self.args.trainers} trainers peered "
+            f"(difficulty {self.args.difficulty})"
+        )
 
     def chain_of(self, i):
         return with_retries(
@@ -351,6 +354,7 @@ def build_parser():
     parser.add_argument("--funding-rounds", type=int, default=3)
     parser.add_argument("--tracker-port", type=int, default=5109)
     parser.add_argument("--base-port", type=int, default=5110)
+    parser.add_argument("--difficulty", type=int, default=4)
     parser.add_argument("--startup-stagger", type=float, default=1.0)
     parser.add_argument("--funding-settle", type=float, default=1.0)
     parser.add_argument("--chain-cache", type=float, default=10.0)
@@ -377,6 +381,8 @@ def main(argv=None):
         parser.error("--target-pending must be at least 1")
     if args.funding_rounds < 1:
         parser.error("--funding-rounds must be at least 1")
+    if not 0 <= args.difficulty <= 6:
+        parser.error("--difficulty must be between 0 and 6")
     if args.startup_stagger < 0:
         parser.error("--startup-stagger cannot be negative")
     if args.funding_settle < 0:
