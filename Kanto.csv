@@ -128,20 +128,20 @@ Nat,Pokemon,Type I,Type II,Move 1,Move 2,Move 3,Move 4,Rarity
 127,Pinsir,Bug,,Fury Cutter,Vicegrip,Submission,Earthquake,3
 128,Tauros,Normal,,Take Down,Pursuit,Rock Smash,Body Slam,2
 129,Magikarp,Water,,Tackle,Flail,Tackle,Flail,1
-130,Gyarados,Water,Flying,Waterfall,Dragonbreath,Surf,Earthquake,3
-131,Lapras,Water,Ice,Waterfall,Surf,Ice Beam,Thunderbolt,3
+130,Gyarados,Water,Flying,Waterfall,Dragonbreath,Surf,Earthquake,4
+131,Lapras,Water,Ice,Waterfall,Surf,Ice Beam,Thunderbolt,4
 132,Ditto,Normal,,Tackle,Tackle,Tackle,Tackle,2
-133,Eevee,Normal,,Take Down,Iron Tail,Shadow Ball,Growl,1
+133,Eevee,Normal,,Take Down,Iron Tail,Shadow Ball,Growl,2
 134,Vaporeon,Water,,Waterfall,Surf,Ice Beam,Quick Attack,3
 135,Jolteon,Electric,,Thunderbolt,Pin Missile,Double Kick,Quick Attack,3
 136,Flareon,Fire,,Fire Blast,Flamethrower,Flame Wheel,Quick Attack,3
-137,Porygon,Normal,,Tri Attack,Blizzard,Tackle,Growl,2
+137,Porygon,Normal,,Tri Attack,Blizzard,Tackle,Growl,4
 138,Omanyte,Rock,Water,Surf,Ancientpower,Blizzard,Spike Cannon,2
 139,Omastar,Rock,Water,Surf,Ancientpower,Blizzard,Spike Cannon,3
 140,Kabuto,Rock,Water,Rollout,Giga Drain,Blizzard,Surf,2
 141,Kabutops,Rock,Water,Rollout,Giga Drain,Blizzard,Surf,3
-142,Aerodactyl,Rock,Flying,Ancientpower,Steel Wing,Rock Slide,Fly,3
-143,Snorlax,Normal,,Headbutt,Fire Punch,Thunderpunch,Body Slam,3
+142,Aerodactyl,Rock,Flying,Ancientpower,Steel Wing,Rock Slide,Fly,4
+143,Snorlax,Normal,,Headbutt,Fire Punch,Thunderpunch,Body Slam,4
 144,Articuno,Ice,Flying,Blizzard,Aerial Ace,Ice Beam,Fly,4
 145,Zapdos,Electric,Flying,Thunder,Thunderbolt,Aerial Ace,Fly,4
 146,Moltres,Fire,Flying,Fire Blast,Flamethrower,Aerial Ace,Fly,4
