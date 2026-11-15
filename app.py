@@ -160,6 +160,21 @@ def create_app(node_url, tracker_url=None):
                 200,
             )
 
+    @app.route("/node/info", methods=["GET"])
+    def node_info():
+        with blockchain.lock:
+            return (
+                jsonify(
+                    {
+                        "node": blockchain.node,
+                        "user": blockchain.user,
+                        "length": len(blockchain.chain),
+                        "pending": len(blockchain.current_trade),
+                    }
+                ),
+                200,
+            )
+
     @app.route("/mine", methods=["GET"])
     def mine():
         with blockchain.lock:

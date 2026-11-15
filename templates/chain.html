@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="{{ refresh }}">
+<title>Blockchain</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='img/pokeball.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="game">
+<div class="page">
+  <div class="topbar"><h1>Blockchain ({{ count }} blocks)</h1></div>
+  <nav class="actions">
+    <a class="btn secondary" href="/">Back to Monitor</a>
+  </nav>
+  {% for b in blocks %}
+  <details class="block"{% if loop.first %} open{% endif %}>
+    <summary>
+      <strong>Block {{ b.index }}</strong>
+      <span class="tmeta">{{ b.time }} &bull; miner {{ b.miner }} &bull; {{ b.trade_count }} trades</span>
+      <span>Reward: <strong>{{ b.reward.name }}</strong>{% if b.reward.rarity %}<span class="pill r{{ b.reward.rarity }}">R{{ b.reward.rarity }}</span>{% endif %}</span>
+    </summary>
+    <div class="bdetail">
+      {% for t in b.trades %}
+      <div class="tx">{{ t.trainer1 }} sent <strong>{{ t.sent1.name }}</strong> &#8646; {{ t.trainer2 }} sent <strong>{{ t.sent2.name }}</strong></div>
+      {% endfor %}
+      <div class="tmeta">proof {{ b.proof }} &bull; prev {{ b.prev }} &bull; hash {{ b.hash }}</div>
+    </div>
+  </details>
+  {% else %}
+  <div class="empty"><p>No blocks yet.</p></div>
+  {% endfor %}
+</div>
+</body>
+</html>

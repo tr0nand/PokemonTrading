@@ -503,6 +503,18 @@ def test_start_form_has_submit_button():
     assert b'type="submit"' in client.get("/").data
 
 
+def test_node_info_reports_status():
+    application = create_app(A_URL)
+    client = application.test_client()
+    set_user(client, "Ash")
+    assert client.get("/node/info").get_json() == {
+        "node": A_URL,
+        "user": "Ash",
+        "length": 1,
+        "pending": 0,
+    }
+
+
 def test_post_json_returns_none_on_failure(monkeypatch):
     def boom(*args, **kwargs):
         raise requests.ConnectionError("down")

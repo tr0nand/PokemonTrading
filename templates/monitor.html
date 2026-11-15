@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="{{ refresh }}">
+<title>Trainer Monitor</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='img/pokeball.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="game">
+<div class="page">
+  <div class="topbar"><h1>Trainer Monitor</h1></div>
+  <nav class="actions">
+    <a class="btn secondary" href="/chain">View Blockchain</a>
+  </nav>
+  <p class="stats">{{ count }} trainers &bull; longest chain {{ chain_length }} &bull; {{ total_mons }} pokemon &bull; refreshes every {{ refresh }}s</p>
+  {% if top_rares %}
+  <div class="panel">
+    <h2>Rarest held (R{{ max_rarity }})</h2>
+    <div>
+      {% for r in top_rares %}
+      <span class="chip">{{ r.name }}<span class="pill r{{ r.rarity }}">R{{ r.rarity }}</span> <span class="trainer">{{ r.trainer }}</span></span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% if trainers %}
+  <div class="tlist">
+    {% for t in trainers %}
+    <details class="trow">
+      <summary>
+        <span class="tname">{{ t.label }}</span>
+        {% if t.reachable %}
+        <span class="tcounts">{{ t.mons|length }} pokemon{% for r in [1, 2, 3, 4, 5] %}{% if t.counts[r] %} &bull; R{{ r }}&times;{{ t.counts[r] }}{% endif %}{% endfor %}</span>
+        <span class="tmeta">Block {{ t.length if t.length is not none else "?" }} &bull; {{ t.pending }} pending</span>
+        {% else %}
+        <span class="unreachable">unreachable</span>
+        {% endif %}
+      </summary>
+      <div class="sprites">
+        {% for m in t.mons %}
+        <img src="/static/img/pokemon/{{ m.img }}" alt="{{ m.name }}" title="{{ m.name }}">
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><p>No trainers found. Check the tracker URL.</p></div>
+  {% endif %}
+</div>
+</body>
+</html>
