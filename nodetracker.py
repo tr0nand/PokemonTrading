@@ -18,14 +18,21 @@ import threading
 
 import requests
 from flask import Flask, jsonify, request
+from requests.adapters import HTTPAdapter
 
 INTRO_TIMEOUT = 5
+
+# Shared keep-alive session: registering N trainers fires ~2N introductions,
+# which exhausts localhost ephemeral ports without connection reuse.
+_SESSION = requests.Session()
+_SESSION.mount("http://", HTTPAdapter(pool_connections=128, pool_maxsize=8))
+_SESSION.mount("https://", HTTPAdapter(pool_connections=128, pool_maxsize=8))
 
 
 def announce(url, payload):
     """Best-effort POST of an introduction payload. Returns True on 2xx."""
     try:
-        resp = requests.post(url, json=payload, timeout=INTRO_TIMEOUT)
+        resp = _SESSION.post(url, json=payload, timeout=INTRO_TIMEOUT)
         return 200 <= resp.status_code < 300
     except requests.RequestException:
         return False

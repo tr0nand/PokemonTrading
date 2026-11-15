@@ -3,6 +3,8 @@ import threading
 from collections import Counter
 from types import SimpleNamespace
 
+import requests
+
 import pytest
 
 import app as trainer_app
@@ -499,3 +501,16 @@ def test_pages_work_offline_and_link_absolutely():
 def test_start_form_has_submit_button():
     client = create_app(A_URL).test_client()
     assert b'type="submit"' in client.get("/").data
+
+
+def test_post_json_reuses_shared_session(monkeypatch):
+    seen = []
+
+    def fake_post(self, url, **kwargs):
+        seen.append(self)
+        return SimpleNamespace(ok=True, status_code=200)
+
+    monkeypatch.setattr(requests.Session, "post", fake_post)
+    trainer_app._post_json("http://x/1", {})
+    trainer_app._post_json("http://x/2", {})
+    assert seen == [trainer_app._SESSION, trainer_app._SESSION]
