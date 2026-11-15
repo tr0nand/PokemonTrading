@@ -1,3 +1,5 @@
-pandas
-requests
-Flask
+# Pinned direct dependencies (Python 3.10, verified via .venv).
+# pandas was dropped: dex lookups use the csv stdlib module now.
+Flask==3.1.3
+requests==2.34.2
+pytest==9.2.0
