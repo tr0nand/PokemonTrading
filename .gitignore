@@ -11,3 +11,6 @@ __pycache__/
 # Per-node chain data (added when persistence lands)
 node-data/
 *.db
+
+# Simulator output
+sim_results.json

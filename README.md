@@ -56,6 +56,25 @@ source .venv/bin/activate
 python -m pytest tests/ -q
 ```
 
+## Simulator
+
+`simulator.py` runs a bot network on its own ports (tracker :5109, trainers
+:5110+, separate from `demo.py`) to exercise trading and mining at scale:
+
+```bash
+python simulator.py --trainers 20 --minutes 20
+python simulator.py --trainers 4 --miner-weights 50,25,12.5,12.5 \
+    --eagerness 3 --accept-rate 0.8 --fair-only --seed 7 --serve-after
+```
+
+Knobs: `--trainers` (bot count), `--miner-weights` (per-trainer mining
+share, default uniform), `--eagerness` (mean trades/sec/bot),
+`--accept-rate` (offer acceptance probability), `--fair-only` (bots reject
+rarity-losing trades), plus `--minutes`, `--target-pending`,
+`--funding-rounds`, `--seed`, `--results`, `--log`, and `--serve-after` to
+keep browsing when the run ends. Results land in `sim_results.json`
+(ignored by git).
+
 ## Layout
 
 - `app.py` — trainer node (browser UI + peer API)
@@ -63,6 +82,7 @@ python -m pytest tests/ -q
 - `blockchain.py` — blocks, trades, proof-of-work, consensus
 - `pokedex.py` — Gen-1 dex lookups and reward pools (`Kanto.csv`)
 - `demo.py` — one-command local game
+- `simulator.py` — configurable bot network for experiments
 - `templates/` + `static/` — pages, sprites, styles
 
 ## Known limits

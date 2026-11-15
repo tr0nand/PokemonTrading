@@ -1,0 +1,53 @@
+import random
+
+import pytest
+
+from simulator import build_parser, choose_miner, parse_weights, summarize_holdings
+
+
+def test_parse_weights_valid():
+    assert parse_weights("50,25,25", 3) == [50.0, 25.0, 25.0]
+    assert parse_weights("1,1", 2) == [1.0, 1.0]
+
+
+def test_parse_weights_rejects_bad_specs():
+    with pytest.raises(ValueError):
+        parse_weights("50,25", 3)  # count mismatch
+    with pytest.raises(ValueError):
+        parse_weights("50,xx", 2)  # non-numeric
+    with pytest.raises(ValueError):
+        parse_weights("50,-5", 2)  # negative
+    with pytest.raises(ValueError):
+        parse_weights("0,0", 2)  # all zero
+
+
+def test_choose_miner_respects_weights():
+    assert choose_miner([1.0, 0.0], random.Random(0)) == 0
+    assert choose_miner([0.0, 5.0], random.Random(0)) == 1
+    rng1, rng2 = random.Random(42), random.Random(42)
+    first = [choose_miner([3.0, 1.0], rng1) for _ in range(50)]
+    second = [choose_miner([3.0, 1.0], rng2) for _ in range(50)]
+    assert first == second  # seeded runs reproduce
+    assert set(first) == {0, 1}  # both miners get picked
+
+
+def test_summarize_holdings_counts_and_rares():
+    dex = {10: ("Caterpie", 1), 150: ("Mewtwo", 5), 151: ("Mew", 5), 6: ("Charizard", 4)}
+    summary = summarize_holdings({0: [10, 150], 1: [6, 151], 2: []}, dex)
+    assert summary["by_rarity"] == {1: 1, 2: 0, 3: 0, 4: 1, 5: 2}
+    assert [(r["owner"], r["name"]) for r in summary["rares"]] == [
+        (1, "Mew"),
+        (0, "Mewtwo"),
+        (1, "Charizard"),
+    ]
+
+
+def test_parser_defaults():
+    args = build_parser().parse_args([])
+    assert args.trainers == 20
+    assert args.minutes == 20
+    assert args.miner_weights is None
+    assert args.eagerness == 2.0
+    assert args.accept_rate == 1.0
+    assert args.fair_only is False
+    assert args.serve_after is False
