@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="{{ refresh }}">
+<title>Trainer Monitor</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='img/pokeball.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="game">
+<div class="page">
+  <div class="topbar"><h1>Trainer Monitor</h1></div>
+  <p class="stats">{{ count }} trainers &bull; longest chain {{ chain_length }} &bull; refreshes every {{ refresh }}s</p>
+  {% if trainers %}
+  <div class="mon-grid">
+    {% for t in trainers %}
+    <div class="trainer">
+      <h3>{{ t.label }}</h3>
+      {% if t.reachable %}
+      <div class="meta">Block {{ t.length }} &bull; {{ t.pending }} pending &bull; {{ t.mons|length }} pokemon</div>
+      {% if t.rares %}
+      <div class="meta">Rares:{% for m in t.rares %} {{ m.name }}<span class="pill r{{ m.rarity }}">R{{ m.rarity }}</span>{% endfor %}</div>
+      {% endif %}
+      <div class="sprites">
+        {% for m in t.mons %}
+        <img src="/static/img/pokemon/{{ m.img }}" alt="{{ m.name }}" title="{{ m.name }}">
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="meta"><span class="unreachable">unreachable</span></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><p>No trainers found. Check the tracker URL.</p></div>
+  {% endif %}
+</div>
+</body>
+</html>

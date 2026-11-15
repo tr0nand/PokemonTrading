@@ -80,6 +80,21 @@ server closes every connection, so request volume is the limit):
 `--startup-stagger`, `--funding-settle`, `--chain-cache` (shared chain
 snapshot TTL), and `--min-round-interval`.
 
+## Monitor
+
+`monitor.py` watches a running network and shows every trainer's current
+collection on one auto-refreshing page, with rarity-4/5 catches called out:
+
+```bash
+python monitor.py --tracker http://127.0.0.1:5109 --port 5200
+python monitor.py --trainers http://127.0.0.1:5010/node,http://127.0.0.1:5011/node
+```
+
+Then open the monitor port in a browser. It discovers trainers from the
+tracker (or takes an explicit list), reads one status snapshot per trainer
+plus the longest chain once, and refreshes every `--refresh` seconds
+(default 15).
+
 ## Layout
 
 - `app.py` — trainer node (browser UI + peer API)
@@ -88,6 +103,7 @@ snapshot TTL), and `--min-round-interval`.
 - `pokedex.py` — Gen-1 dex lookups and reward pools (`Kanto.csv`)
 - `demo.py` — one-command local game
 - `simulator.py` — configurable bot network for experiments
+- `monitor.py` — live dashboard of every trainer's collection
 - `templates/` + `static/` — pages, sprites, styles
 
 ## Known limits
