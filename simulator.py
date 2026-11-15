@@ -105,6 +105,8 @@ class Sim:
         self.calc = Blockchain("sim")  # local holdings math, never served
         self.stop = threading.Event()
         self.session = requests.Session()
+        self.accepted = 0
+        self.accepted_lock = threading.Lock()
         self.log_file = open(args.log, "w", buffering=1) if args.log else None
         # Shared chain snapshot: the dev server closes every connection, so
         # request volume (not pooling) is what must stay within localhost's
@@ -133,6 +135,41 @@ class Sim:
             daemon=True,
         ).start()
         app.run(host="0.0.0.0", port=self.args.base_port + i, threaded=True, use_reloader=False)
+
+    def verify_servers(self, timeout=60):
+        """Fail fast unless every server answers with the right identity.
+
+        Catches bind collisions (a dead thread, or a stranger holding the
+        port) in seconds instead of after an hour of confusing failures.
+        """
+        deadline = time.time() + timeout
+        while True:
+            missing = []
+            try:
+                payload = self.session.get(
+                    f"{self.tracker_url}/nodes", timeout=3
+                ).json()
+                tracker_ok = isinstance(payload, dict) and isinstance(
+                    payload.get("nodes"), list
+                )
+            except (requests.RequestException, ValueError):
+                tracker_ok = False
+            if not tracker_ok:
+                missing.append(f"tracker :{self.args.tracker_port}")
+            for i in range(self.args.trainers):
+                try:
+                    body = self.session.get(f"{self.roots[i]}/", timeout=3).text
+                    ok = 'name="user"' in body
+                except requests.RequestException:
+                    ok = False
+                if not ok:
+                    missing.append(f"trainer-{i} :{self.args.base_port + i}")
+            if not missing:
+                return
+            if time.time() >= deadline:
+                self.log(f"FATAL: servers never came up: {', '.join(missing)}")
+                raise SystemExit(1)
+            time.sleep(min(2, max(0, deadline - time.time())))
 
     def wait_ready(self):
         deadline = time.time() + 300
@@ -175,15 +212,19 @@ class Sim:
             self._chain_cached = chain
         return chain
 
-    def pending_of(self, i):
-        return with_retries(
-            lambda: self.session.get(f"{self.roots[i]}/trade/unc", timeout=10).json()
-        )
+    def mine(self, i, timeout):
+        """Mine on trainer i, failing loudly on HTTP errors (wrong server)."""
+        with_retries(lambda: self._checked_get(f"{self.roots[i]}/mine", timeout))
+
+    def _checked_get(self, url, timeout):
+        resp = self.session.get(url, timeout=timeout)
+        resp.raise_for_status()
+        return resp
 
     def phase_funding(self):
         for _ in range(self.args.funding_rounds):
             for i in range(self.args.trainers):
-                with_retries(lambda: self.session.get(f"{self.roots[i]}/mine", timeout=60))
+                self.mine(i, timeout=60)
                 time.sleep(self.args.funding_settle)
         time.sleep(SETTLE)
         lengths = sorted({len(self.chain_of(i)) for i in range(self.args.trainers)})
@@ -215,7 +256,7 @@ class Sim:
                 )
                 if r.status_code != 200:
                     continue
-                s.post(
+                r2 = s.post(
                     f"{self.roots[b]}/trade/resp",
                     data={
                         "submit": "Accept",
@@ -226,6 +267,9 @@ class Sim:
                     },
                     timeout=10,
                 )
+                if r2.ok:
+                    with self.accepted_lock:
+                        self.accepted += 1
             except Exception as exc:
                 self.log(f"bot{i} err {type(exc).__name__}")
             time.sleep(self.rng.uniform(0, 2 / self.args.eagerness))
@@ -240,16 +284,21 @@ class Sim:
         deadline = time.time() + self.args.minutes * 60
         rounds = 0
         last_mine = 0.0
+        mined_mark = 0
         while time.time() < deadline:
             time.sleep(2)
             miner = choose_miner(self.weights, self.rng)
+            with self.accepted_lock:
+                unmined = self.accepted - mined_mark
             try:
-                if len(self.pending_of(miner)) < self.args.target_pending:
+                if unmined < self.args.target_pending:
                     continue
                 wait = self.args.min_round_interval - (time.time() - last_mine)
                 if wait > 0:
                     time.sleep(wait)
-                with_retries(lambda: self.session.get(f"{self.roots[miner]}/mine", timeout=90))
+                with self.accepted_lock:
+                    mined_mark = self.accepted
+                self.mine(miner, timeout=90)
                 last_mine = time.time()
                 block = self.chain_of(miner)[-1]
                 rew = int(block["rew"])
@@ -345,6 +394,7 @@ def main(argv=None):
     for i in range(args.trainers):
         threading.Thread(target=sim.run_trainer, args=(i,), daemon=True).start()
         time.sleep(args.startup_stagger)
+    sim.verify_servers()
     sim.wait_ready()
     sim.phase_funding()
     rounds = sim.phase_trading()
