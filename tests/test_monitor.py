@@ -95,6 +95,8 @@ def test_dashboard_compact_rows_sorted_by_rares(monkeypatch):
     page = create_monitor(TRACKER, ()).test_client().get("/").data.decode()
     assert "<details" in page
     assert "Rarest held (R5)" in page
+    board = page.split("Rarest held")[1].split('<div class="tlist">')[0]
+    assert "/static/img/pokemon/150.png" in board
     assert "2 pokemon" in page
     assert "R1&times;1" in page and "R5&times;1" in page
     assert page.find("Trainer :5002") < page.find("Ash :5001")
