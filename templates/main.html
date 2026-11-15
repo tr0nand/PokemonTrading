@@ -1,48 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <title>Pokemon Trading</title>
-<style>
-
-body {
-  background-image: url({{url_for('static',filename='img/charbackground.png')}});
-  background-repeat:no-repeat;
-  background-size:100% 100vh;
-  background-attachment: fixed;
-}
-
-</style>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-<link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
-<body>
-<center>
-<j >
-<b style="font-size:40px;">Welcome {{name}}</b>
-<br><br><br><br>
-<a href = '/mine' id="mine" onclick="mining()">Mine</a>
-<a href = '/node/chain'>View Blockchain</a>
-<a href = '/trade'>Trade</a>
-<br><br>
-<b style = "font-size:20px">Current Pokemon</b> </j>
-<br><br><br><br><br><br>
-</center>
-
-
-{% if pokes %}
-
-{% for k in pokes %}
-<img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}} width="320" height="240" />
-<br>
-{{k.name}}
-<br>
-{% endfor %}
-</body>
-{% else %}
-<center>
-<b id = "warn">No Pokemon currently owned. Mine blocks to capture Pokemon</b>
-</center>
-{% endif %}
-
-<script type="text/javascript">
-
-function mining(){
-  alert('Mining to begin');
-}
+<link rel="shortcut icon" href="{{ url_for('static', filename='img/pokeball.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="game">
+<div class="page">
+  <div class="topbar"><h1>Welcome {{ name }}</h1></div>
+  <nav class="actions">
+    <a class="btn" href="/mine" id="mine">Mine</a>
+    <a class="btn secondary" href="/node/chain">View Blockchain</a>
+    <a class="btn secondary" href="/trade">Trade</a>
+  </nav>
+  <p class="stats">Block {{ chain_length }} &bull; {{ pending }} unconfirmed trades</p>
+  <h2>Current Pokemon ({{ pokes|length }})</h2>
+  {% if pokes %}
+  <div class="grid">
+    {% for k in pokes %}
+    <div class="card">
+      <img src="/static/img/pokemon/{{ k.id }}" alt="{{ k.name }}">
+      <div class="name">{{ k.name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><p>No Pokemon currently owned. Mine blocks to capture Pokemon</p></div>
+  {% endif %}
+</div>
+<script>
+document.getElementById("mine").addEventListener("click", function () {
+  this.textContent = "Mining\u2026";
+});
 </script>
+</body>
+</html>

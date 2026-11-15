@@ -466,3 +466,36 @@ def test_trainer_rejects_oversized_body():
     client = application.test_client()
     resp = client.post("/node/trade/off", json={"node": "x" * 1000})
     assert resp.status_code == 413
+
+
+def test_home_shows_chain_stats():
+    application = create_app(A_URL)
+    client = application.test_client()
+    set_user(client, "Ash")
+    page = client.get("/home").data.decode()
+    assert "Block 1" in page
+    assert "0 unconfirmed trades" in page
+
+
+def test_pages_work_offline_and_link_absolutely():
+    application = create_app(A_URL)
+    client = application.test_client()
+    set_user(client, "Ash")
+    own = application.blockchain.own_pokes()[0]
+    bodies = [
+        client.get("/").data,
+        client.get("/home").data,
+        client.get("/trade").data,
+        client.get(f"/trade/{own}").data,
+        client.get("/trade/outg").data,
+        client.get("/trade/off").data,
+    ]
+    for body in bodies:
+        assert b"ajax.googleapis.com" not in body
+    assert 'href="/trade/outg"' in bodies[2].decode()
+    assert 'href="/trade/off"' in bodies[4].decode()
+
+
+def test_start_form_has_submit_button():
+    client = create_app(A_URL).test_client()
+    assert b'type="submit"' in client.get("/").data

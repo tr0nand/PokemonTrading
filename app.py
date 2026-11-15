@@ -126,11 +126,17 @@ def create_app(node_url, tracker_url=None):
     def home():
         if not blockchain.user:
             return redirect(url_for("start"))
-        pokes = [
-            {"name": pokemon_name(blockchain.dex, n), "id": f"{n}.png"}
-            for n in blockchain.own_pokes()
-        ]
-        return render_template("main.html", name=blockchain.user, pokes=pokes)
+        with blockchain.lock:
+            pokes = [
+                {"name": pokemon_name(blockchain.dex, n), "id": f"{n}.png"}
+                for n in blockchain.own_pokes()
+            ]
+            length = len(blockchain.chain)
+            pending = len(blockchain.current_trade)
+            user = blockchain.user
+        return render_template(
+            "main.html", name=user, pokes=pokes, chain_length=length, pending=pending
+        )
 
     @app.route("/node", methods=["POST"])
     def register_node():
