@@ -3,6 +3,8 @@ import threading
 from collections import Counter
 from types import SimpleNamespace
 
+import requests
+
 import pytest
 
 import app as trainer_app
@@ -499,3 +501,11 @@ def test_pages_work_offline_and_link_absolutely():
 def test_start_form_has_submit_button():
     client = create_app(A_URL).test_client()
     assert b'type="submit"' in client.get("/").data
+
+
+def test_post_json_returns_none_on_failure(monkeypatch):
+    def boom(*args, **kwargs):
+        raise requests.ConnectionError("down")
+
+    monkeypatch.setattr(requests, "post", boom)
+    assert trainer_app._post_json("http://x/1", {}) is None

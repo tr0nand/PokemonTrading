@@ -83,3 +83,12 @@ def test_rejects_oversized_body():
     client = application.test_client()
     resp = client.post("/nodes", json={"node": "x" * 1000})
     assert resp.status_code == 413
+
+
+def test_announce_reports_success(monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        requests, "post", lambda *a, **k: SimpleNamespace(status_code=200)
+    )
+    assert nodetracker.announce("http://x/1", {}) is True
