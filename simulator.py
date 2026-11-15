@@ -30,6 +30,7 @@ from app import create_app, register_with_tracker
 from blockchain import Blockchain
 from nodetracker import create_tracker
 from pokedex import load_dex
+from requests.adapters import HTTPAdapter
 
 SETTLE = 1.5
 
@@ -74,6 +75,18 @@ def summarize_holdings(holdings_by_trainer, dex):
     return {"by_rarity": by_rarity, "rares": rares}
 
 
+def with_retries(fn, attempts=5, delay=1.0):
+    """Call fn(), retrying request failures with linear backoff."""
+    last = None
+    for i in range(attempts):
+        try:
+            return fn()
+        except requests.RequestException as exc:
+            last = exc
+            time.sleep(delay * (i + 1))
+    raise last
+
+
 class Sim:
     def __init__(self, args):
         self.args = args
@@ -92,6 +105,9 @@ class Sim:
         self.dex = load_dex()
         self.calc = Blockchain("sim")  # local holdings math, never served
         self.stop = threading.Event()
+        self.session = requests.Session()
+        self.session.mount("http://", HTTPAdapter(pool_connections=128, pool_maxsize=8))
+        self.session.mount("https://", HTTPAdapter(pool_connections=128, pool_maxsize=8))
         self.log_file = open(args.log, "w", buffering=1) if args.log else None
 
     def log(self, msg):
@@ -118,7 +134,7 @@ class Sim:
         deadline = time.time() + 120
         while time.time() < deadline:
             try:
-                nodes = requests.get(f"{self.tracker_url}/nodes", timeout=5).json()["nodes"]
+                nodes = self.session.get(f"{self.tracker_url}/nodes", timeout=5).json()["nodes"]
                 if len(nodes) >= self.args.trainers:
                     break
             except Exception:
@@ -136,15 +152,19 @@ class Sim:
         self.log(f"ready: {self.args.trainers} trainers peered")
 
     def chain_of(self, i):
-        return requests.get(f"{self.nodes[i]}/chain", timeout=15).json()["chain"]
+        return with_retries(
+            lambda: self.session.get(f"{self.nodes[i]}/chain", timeout=15).json()["chain"]
+        )
 
     def pending_of(self, i):
-        return requests.get(f"{self.roots[i]}/trade/unc", timeout=10).json()
+        return with_retries(
+            lambda: self.session.get(f"{self.roots[i]}/trade/unc", timeout=10).json()
+        )
 
     def phase_funding(self):
         for _ in range(self.args.funding_rounds):
             for i in range(self.args.trainers):
-                requests.get(f"{self.roots[i]}/mine", timeout=60)
+                with_retries(lambda: self.session.get(f"{self.roots[i]}/mine", timeout=60))
                 time.sleep(0.3)
         time.sleep(SETTLE)
         lengths = sorted({len(self.chain_of(i)) for i in range(self.args.trainers)})
@@ -152,6 +172,8 @@ class Sim:
 
     def bot(self, i):
         s = requests.Session()
+        s.mount("http://", HTTPAdapter(pool_connections=8, pool_maxsize=4))
+        s.mount("https://", HTTPAdapter(pool_connections=8, pool_maxsize=4))
         n = self.args.trainers
         while not self.stop.is_set():
             try:
@@ -206,7 +228,7 @@ class Sim:
             try:
                 if len(self.pending_of(miner)) < self.args.target_pending:
                     continue
-                requests.get(f"{self.roots[miner]}/mine", timeout=90)
+                with_retries(lambda: self.session.get(f"{self.roots[miner]}/mine", timeout=90))
                 block = self.chain_of(miner)[-1]
                 rew = int(block["rew"])
                 name, rarity = self.dex[rew]

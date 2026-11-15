@@ -1,8 +1,15 @@
 import random
 
 import pytest
+import requests
 
-from simulator import build_parser, choose_miner, parse_weights, summarize_holdings
+from simulator import (
+    build_parser,
+    choose_miner,
+    parse_weights,
+    summarize_holdings,
+    with_retries,
+)
 
 
 def test_parse_weights_valid():
@@ -51,3 +58,22 @@ def test_parser_defaults():
     assert args.accept_rate == 1.0
     assert args.fair_only is False
     assert args.serve_after is False
+
+
+def test_with_retries_recovers_and_gives_up():
+    calls = []
+
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise requests.ConnectionError("down")
+        return "ok"
+
+    assert with_retries(flaky, delay=0) == "ok"
+    assert len(calls) == 3
+
+    def dead():
+        raise requests.ConnectionError("down")
+
+    with pytest.raises(requests.ConnectionError):
+        with_retries(dead, attempts=2, delay=0)
