@@ -42,11 +42,55 @@ trades, and the rarity-6 mythics (Mewtwo, Mew) at 40+ trades.
 ## How it works
 
 One tracker process introduces trainers to each other; each trainer runs its
-own Flask app holding a full copy of the chain. Consensus is
-longest-valid-chain: a trainer only adopts a longer chain whose hashes link,
-whose proofs meet the difficulty (SHA-256 starting with `0000`), whose
-rewards fit their trade counts, and whose trades spend Pokemon the traders
-actually own. Pending trades are validated without mutating the queue, and a
+own Flask app holding a full copy of the chain.
+
+### Blocks
+
+Each block carries an index, a timestamp, the trades it seals, a proof, the
+previous block's hash, the miner, and a reward Pokemon. A block's fingerprint
+is the SHA-256 hash of its canonical JSON encoding, so any edit to a sealed
+block changes its hash and breaks every link after it.
+
+### Proof of work
+
+Mining is a hashcash-style search: starting from proof zero, the miner counts
+up until this check passes:
+
+```python
+sha256(str(last_proof + proof) + last_hash).hexdigest()[:N] == "0" * N
+```
+
+`N` is the difficulty (leading zeros, default 4, up to 6 in the simulator).
+Each extra zero makes mining roughly sixteen times slower, and every node on
+a network must use the same value or their chains fork permanently.
+
+```mermaid
+flowchart TD
+    Q[Pending trades<br/>own queue plus peers] --> V{Each trader owns<br/>what they offer?}
+    V -- Yes --> W[Brute force a proof until the block hash starts with N zeros]
+    V -- No --> X[Drop trade, mark Invalid]
+    W --> R[Grant reward by trade count]
+    R --> B[Seal block, append, broadcast]
+```
+
+### Trades
+
+```mermaid
+flowchart LR
+    O[Trainer A offers a mon for one of B's mons] --> P{B accepts?}
+    P -- Yes --> Q[Trade queued on B's node]
+    P -- No --> R[Cancelled]
+    Q --> S[Miner pulls it, validates, seals it in a block]
+    S --> T[Verified on every synced chain]
+```
+
+### Consensus and validation
+
+Trainers follow the longest *valid* chain: a longer chain is adopted only if
+every block links correctly, every proof meets the difficulty, every reward
+fits its trade count, and every trade spends Pokemon the traders actually
+owned at that point (replayed in order). Anything else is rejected, however
+long it is. Pending trades are validated without mutating the queue, and a
 re-entrant lock guards chain state instead of a spin-wait.
 
 ## Testing
