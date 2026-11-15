@@ -53,26 +53,28 @@ def _card(dex, nat, trainer=None):
     return card
 
 
-def _mark_invalid(blockchain, trade):
-    """Record an invalid trade: locally for our own request, or notify the
-    requesting trainer so their outgoing list shows it as invalid."""
-    if trade.get("trainer1") == blockchain.node:
-        with blockchain.lock:
-            for req in blockchain.tradereqs:
-                if str(req.get("node")) == str(trade.get("trainer2")) and str(
-                    req.get("timestamp")
-                ) == str(trade.get("time")):
-                    req["status"] = STATUS_INVALID
-                    break
-    else:
-        _post_json(
-            f"{trade.get('trainer1')}/trade/offerresp",
-            {
-                "node": trade.get("trainer2"),
-                "tim": trade.get("time"),
-                "status": STATUS_INVALID,
-            },
-        )
+def _mark_invalid_local(blockchain, trade):
+    """Mark our own outgoing request invalid. Lock-protected, no I/O."""
+    with blockchain.lock:
+        for req in blockchain.tradereqs:
+            if str(req.get("node")) == str(trade.get("trainer2")) and str(
+                req.get("timestamp")
+            ) == str(trade.get("time")):
+                req["status"] = STATUS_INVALID
+                break
+
+
+def _notify_invalid_remote(trade):
+    """Tell the requesting trainer their trade was invalid. Network I/O:
+    call without holding the chain lock."""
+    _post_json(
+        f"{trade.get('trainer1')}/trade/offerresp",
+        {
+            "node": trade.get("trainer2"),
+            "tim": trade.get("time"),
+            "status": STATUS_INVALID,
+        },
+    )
 
 
 def _refresh_outgoing_statuses(blockchain):
@@ -103,6 +105,7 @@ def register_with_tracker(tracker_url, node_url, attempts=5, delay=1.0):
 def create_app(node_url, tracker_url=None):
     """Build the trainer Flask app. Testable without network or processes."""
     app = Flask(__name__, template_folder="templates")
+    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
     blockchain = Blockchain(node_url)
     app.blockchain = blockchain
     app.config["TRACKER_URL"] = tracker_url
@@ -156,13 +159,19 @@ def create_app(node_url, tracker_url=None):
         with blockchain.lock:
             valid, invalid = blockchain.filter_valid_trades()
             blockchain.current_trade = valid
+            remote_invalid = []
             for trade in invalid:
-                _mark_invalid(blockchain, trade)
+                if trade.get("trainer1") == blockchain.node:
+                    _mark_invalid_local(blockchain, trade)
+                else:
+                    remote_invalid.append(trade)
             last = blockchain.last_block
             proof = blockchain.proof_of_work(last["proof"])
             blockchain.new_block(proof, blockchain.hash(last))
             payload = {"chain": blockchain.chain, "length": len(blockchain.chain)}
             peers = sorted(blockchain.nodes)
+        for trade in remote_invalid:
+            _notify_invalid_remote(trade)
         for peer in peers:
             _post_json(f"{peer}/sync", payload)
         return redirect(url_for("home"))
@@ -343,17 +352,23 @@ def create_app(node_url, tracker_url=None):
                 blockchain.offers.remove(offer)
         if offer is None:
             return redirect(url_for("tradeoff"))
-        if request.form.get("submit") == "Accept":
-            _post_json(
-                f"{node}/trade/offerresp",
-                {"node": blockchain.node, "tim": tim, "status": STATUS_ACCEPTED},
-            )
+        accepted = request.form.get("submit") == "Accept"
+        if accepted:
+            # No ownership recheck here: our chain view may lag the miner's,
+            # whose view is the arbiter when the trade is validated. Queuing
+            # only fails on malformed offers, in which case we cancel so the
+            # requester is not left hanging at accepted-but-unverified.
             try:
                 blockchain.new_transaction(
                     node, blockchain.node, offer["sent"], offer["rec"], tim
                 )
             except ValueError:
-                pass
+                accepted = False
+        if accepted:
+            _post_json(
+                f"{node}/trade/offerresp",
+                {"node": blockchain.node, "tim": tim, "status": STATUS_ACCEPTED},
+            )
             values = {
                 "trainer1": node,
                 "trainer2": blockchain.node,

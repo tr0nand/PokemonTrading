@@ -1,4 +1,5 @@
 import copy
+import threading
 from collections import Counter
 from types import SimpleNamespace
 
@@ -396,3 +397,72 @@ def test_register_with_tracker_retries_then_gives_up(monkeypatch):
         trainer_app, "_post_json", lambda *a, **k: SimpleNamespace(ok=True)
     )
     assert register_with_tracker("http://x:1", A_URL, attempts=1, delay=0) is True
+
+
+def test_mine_notifies_remote_without_holding_lock(monkeypatch):
+    application = create_app(A_URL)
+    client = application.test_client()
+    bc = application.blockchain
+    own = bc.own_pokes()[0]
+    bc.new_transaction(B_URL, A_URL, 10, own, 9.0)
+    lock_free = []
+
+    def spy(url, payload, timeout=5):
+        if url.endswith("/trade/offerresp"):
+
+            def probe():
+                if bc.lock.acquire(blocking=False):
+                    probed.append(True)
+                    bc.lock.release()
+                else:
+                    probed.append(False)
+
+            probed = []
+            watcher = threading.Thread(target=probe)
+            watcher.start()
+            watcher.join()
+            lock_free.extend(probed)
+        return None
+
+    monkeypatch.setattr(trainer_app, "_post_json", spy)
+    client.get("/mine")
+    assert lock_free == [True]
+
+
+def test_accept_cancelled_when_queue_fails(posts, monkeypatch):
+    _, _, application, client = make_pair()
+    own = application.blockchain.own_pokes()[0]
+    offer = {"node": A_URL, "sent": 10, "rec": own, "timestamp": 4.0}
+    client.post("/node/trade/off", json=offer)
+
+    def boom(*args, **kwargs):
+        raise ValueError("queue down")
+
+    monkeypatch.setattr(application.blockchain, "new_transaction", boom)
+    resp = client.post(
+        "/trade/resp",
+        data={"submit": "Accept", "node": A_URL, "Sendpoke": 10, "Rec": own, "tim": 4.0},
+    )
+    assert resp.status_code == 302
+    assert (f"{A_URL}/trade/offerresp", {"node": B_URL, "tim": "4.0", "status": "Cancelled"}) in posts
+    assert not [u for u, _ in posts if u.endswith("/trade")]
+
+
+def test_sync_malformed_chain_keeps_without_500():
+    application = create_app(A_URL)
+    client = application.test_client()
+    mine(application)
+    assert len(application.blockchain.chain) == 2
+    for chain in (["x", ["y"]], [{"index": 1}, {"index": 2}], [None, None, None]):
+        resp = client.post("/node/sync", json={"chain": chain})
+        assert resp.status_code == 200
+        assert resp.get_json() == {"status": "kept"}
+    assert len(application.blockchain.chain) == 2
+
+
+def test_trainer_rejects_oversized_body():
+    application = create_app(A_URL)
+    application.config["MAX_CONTENT_LENGTH"] = 100
+    client = application.test_client()
+    resp = client.post("/node/trade/off", json={"node": "x" * 1000})
+    assert resp.status_code == 413
