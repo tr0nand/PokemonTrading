@@ -2,7 +2,8 @@
 
 Fresh rewrite of the old pokemon.py plus the inline pandas lookups in
 app.py/blockchain.py. Uses only the csv stdlib module. Data comes from
-Kanto.csv: Nat,Pokemon,...,Rarity where rarity runs 1 (common) to 5 (rarest).
+Kanto.csv: Nat,Pokemon,...,Rarity where rarity runs 1 (common) to 6
+(mythic: Mewtwo and Mew only).
 """
 
 import csv
@@ -28,8 +29,8 @@ def pokemon_name(dex, nat):
 def reward_pool(dex, trade_count):
     """Dex numbers eligible as a mining reward for a block carrying trade_count trades.
 
-    Tiers match the original game: empty blocks can only yield rarity-1
-    Pokemon, and busier blocks unlock rarer ones.
+    Empty blocks can only yield rarity-1 Pokemon, and busier blocks unlock
+    rarer tiers, up to the rarity-6 mythics at 40+ trades.
     """
     if trade_count < 0:
         raise ValueError(f"trade count cannot be negative: {trade_count}")
@@ -41,6 +42,8 @@ def reward_pool(dex, trade_count):
         allowed = {1, 2, 3}
     elif trade_count < 20:
         allowed = {1, 2, 3, 4}
-    else:
+    elif trade_count < 40:
         allowed = {1, 2, 3, 4, 5}
+    else:
+        allowed = {1, 2, 3, 4, 5, 6}
     return sorted(n for n, (_, rarity) in dex.items() if rarity in allowed)

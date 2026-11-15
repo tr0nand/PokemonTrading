@@ -36,8 +36,8 @@ python app.py 5009 5011
    carrying the trade is mined, the request shows Verified.
 
 Mining incentives: empty blocks only yield common (rarity-1) Pokemon, while
-blocks carrying more trades unlock rarer ones — up to rarity-5 legendaries
-at 20+ trades.
+blocks carrying more trades unlock rarer tiers — rarity-5 elites at 20+
+trades, and the rarity-6 mythics (Mewtwo, Mew) at 40+ trades.
 
 ## How it works
 

@@ -35,15 +35,26 @@ def test_empty_block_yields_only_common(dex):
 def test_busier_blocks_unlock_rarer(dex):
     assert 1 in reward_pool(dex, 1)  # rarity 2 from 1 trade
     assert 2 in reward_pool(dex, 5)  # Ivysaur, rarity 3
-    assert 6 in reward_pool(dex, 10)  # Charizard, rarity 4
-    assert 151 in reward_pool(dex, 20)  # Mew, rarity 5
-    assert 151 not in reward_pool(dex, 19)
+    assert 59 in reward_pool(dex, 10)  # Arcanine, rarity 4
+    assert 6 in reward_pool(dex, 20)  # Charizard, rarity 5
+    assert 6 not in reward_pool(dex, 19)
+    assert 151 in reward_pool(dex, 40)  # Mew, rarity 6
+    assert 151 not in reward_pool(dex, 39)
 
 
 def test_pools_grow_monotonically(dex):
-    sizes = [len(reward_pool(dex, n)) for n in (0, 1, 5, 10, 20)]
+    sizes = [len(reward_pool(dex, n)) for n in (0, 1, 5, 10, 20, 40)]
     assert sizes == sorted(sizes)
     assert len(set(sizes)) > 1
+
+
+def test_canonical_rarities(dex):
+    assert dex[150][1] == 6 and dex[151][1] == 6  # Mewtwo, Mew
+    for nat in (3, 6, 9, 65, 94, 144, 145, 146, 149):
+        assert dex[nat][1] == 5, nat
+    for nat in (31, 34, 59, 130, 131, 137, 142, 143):
+        assert dex[nat][1] == 4, nat
+    assert dex[133][1] == 2  # Eevee, one-per-game gift
 
 
 def test_negative_trade_count_raises(dex):

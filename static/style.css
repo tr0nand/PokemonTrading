@@ -212,6 +212,11 @@ label {
   background: #ffcb05;
   border: 1px solid #b89a00;
 }
+.pill.r6 {
+  background: #1a1a1a;
+  color: #ffcb05;
+  border: 1px solid #ffcb05;
+}
 .unreachable {
   color: #a00;
 }

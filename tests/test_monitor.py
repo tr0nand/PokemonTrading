@@ -46,7 +46,7 @@ def test_dashboard_renders_trainers_and_rares(monkeypatch):
     assert "Trainer :5002" in page
     assert "Pikachu" in page
     assert "Mewtwo" in page
-    assert ">R5<" in page
+    assert ">R6<" in page
     assert "1 pending" in page
 
 
@@ -84,7 +84,7 @@ def test_build_dashboard_uses_longest_chain(monkeypatch):
     assert f"{B}/chain" in calls  # longest holder supplies the shared view
     assert [t["label"] for t in data["trainers"]] == ["Misty :5002", "Ash :5001"]
     assert data["total_mons"] == 2
-    assert data["max_rarity"] == 5
+    assert data["max_rarity"] == 6
     assert [(r["name"], r["trainer"]) for r in data["top_rares"]] == [
         ("Mewtwo", "Misty :5002")
     ]
@@ -94,11 +94,11 @@ def test_dashboard_compact_rows_sorted_by_rares(monkeypatch):
     fake_network(monkeypatch, [info(A, "Ash", 2, 1), info(B, "", 2, 0)])
     page = create_monitor(TRACKER, ()).test_client().get("/").data.decode()
     assert "<details" in page
-    assert "Rarest held (R5)" in page
+    assert "Rarest held (R6)" in page
     board = page.split("Rarest held")[1].split('<div class="tlist">')[0]
     assert "/static/img/pokemon/150.png" in board
     assert "2 pokemon" in page
-    assert "R1&times;1" in page and "R5&times;1" in page
+    assert "R1&times;1" in page and "R6&times;1" in page
     assert page.find("Trainer :5002") < page.find("Ash :5001")
 
 
@@ -155,7 +155,7 @@ def test_chain_view_renders_blocks_newest_first(monkeypatch):
     assert page.count(" open>") == 1  # newest block starts expanded
     assert "Caterpie" in page
     assert "Mewtwo" in page
-    assert ">R5<" in page
+    assert ">R6<" in page
     assert "Misty :5002" in page
     assert "abcdef1234567890" in page
     assert "proof 123" in page
@@ -178,10 +178,14 @@ def test_rarest_board_tracks_top_tier(monkeypatch):
     from blockchain import Blockchain
     from pokedex import load_dex
 
-    both = [{"miner": A, "rew": 6, "trade": []}, {"miner": B, "rew": 150, "trade": []}]
+    both = [
+        {"miner": A, "rew": 6, "trade": []},
+        {"miner": A, "rew": 59, "trade": []},
+        {"miner": B, "rew": 150, "trade": []},
+    ]
     fake_network(monkeypatch, [info(A, "Ash"), info(B, "Misty")], chain=both)
     data = build_dashboard(TRACKER, (), load_dex(), Blockchain("t"))
-    assert data["max_rarity"] == 5
+    assert data["max_rarity"] == 6
     assert [(r["name"], r["trainer"]) for r in data["top_rares"]] == [
         ("Mewtwo", "Misty :5002")
     ]
