@@ -131,12 +131,18 @@ def create_monitor(tracker_url=None, trainers=(), refresh=15):
     return app
 
 
-def main(argv=None):
+def build_parser():
     parser = argparse.ArgumentParser(description="Watch trainers' collections live")
     parser.add_argument("--tracker", default=None, help="tracker base URL")
     parser.add_argument("--trainers", default=None, help="comma-separated node URLs")
-    parser.add_argument("--port", type=int, default=5200)
+    # 5300 sits clear of the simulator's default range (5109-5209+).
+    parser.add_argument("--port", type=int, default=5300)
     parser.add_argument("--refresh", type=int, default=15)
+    return parser
+
+
+def main(argv=None):
+    parser = build_parser()
     args = parser.parse_args(argv)
     explicit = [u.strip() for u in args.trainers.split(",")] if args.trainers else []
     if not args.tracker and not explicit:

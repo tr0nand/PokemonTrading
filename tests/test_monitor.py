@@ -64,6 +64,14 @@ def test_empty_network_renders_notice(monkeypatch):
     assert "No trainers found" in page
 
 
+def test_parser_defaults_clear_of_sim_range():
+    from monitor import build_parser
+
+    args = build_parser().parse_args([])
+    assert args.port == 5300
+    assert args.refresh == 15
+
+
 def test_build_dashboard_uses_longest_chain(monkeypatch):
     calls = fake_network(monkeypatch, [info(A, "Ash", 3), info(B, "Misty", 9)])
     from blockchain import Blockchain

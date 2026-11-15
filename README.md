@@ -86,8 +86,8 @@ snapshot TTL), and `--min-round-interval`.
 collection on one auto-refreshing page, with rarity-4/5 catches called out:
 
 ```bash
-python monitor.py --tracker http://127.0.0.1:5109 --port 5200
-python monitor.py --trainers http://127.0.0.1:5010/node,http://127.0.0.1:5011/node
+python monitor.py --tracker http://127.0.0.1:5109
+python monitor.py --trainers http://127.0.0.1:5010/node,http://127.0.0.1:5011/node --port 5301
 ```
 
 Then open the monitor port in a browser. It discovers trainers from the
