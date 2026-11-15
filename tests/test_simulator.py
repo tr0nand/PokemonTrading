@@ -105,3 +105,47 @@ def test_shared_chain_caches_within_ttl(monkeypatch):
     uncached.shared_chain()
     uncached.shared_chain()
     assert len(calls) == 3
+
+
+def test_verify_servers_pass_and_fail(monkeypatch):
+    from types import SimpleNamespace
+
+    sim = Sim(build_parser().parse_args(["--trainers", "2"]))
+
+    def ok(url, timeout):
+        if url.endswith("/nodes"):
+            return SimpleNamespace(json=lambda: {"nodes": []})
+        return SimpleNamespace(text='<form><input name="user">')
+
+    monkeypatch.setattr(sim.session, "get", ok)
+    sim.verify_servers(timeout=5)  # returns cleanly
+
+    def wrong_app(url, timeout):
+        if url.endswith("/nodes"):
+            return SimpleNamespace(json=lambda: {"nodes": []})
+        return SimpleNamespace(text="<title>Trainer Monitor</title>")
+
+    monkeypatch.setattr(sim.session, "get", wrong_app)
+    with pytest.raises(SystemExit):
+        sim.verify_servers(timeout=0.05)
+
+    def down(url, timeout):
+        raise requests.ConnectionError("refused")
+
+    monkeypatch.setattr(sim.session, "get", down)
+    with pytest.raises(SystemExit):
+        sim.verify_servers(timeout=0.05)
+
+
+def test_checked_get_raises_on_http_error(monkeypatch):
+    sim = Sim(build_parser().parse_args(["--trainers", "2"]))
+
+    class Resp404:
+        status_code = 404
+
+        def raise_for_status(self):
+            raise requests.HTTPError("404 Client Error")
+
+    monkeypatch.setattr(sim.session, "get", lambda *a, **k: Resp404())
+    with pytest.raises(requests.HTTPError):
+        sim._checked_get("http://x/mine", 5)

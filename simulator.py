@@ -134,6 +134,41 @@ class Sim:
         ).start()
         app.run(host="0.0.0.0", port=self.args.base_port + i, threaded=True, use_reloader=False)
 
+    def verify_servers(self, timeout=60):
+        """Fail fast unless every server answers with the right identity.
+
+        Catches bind collisions (a dead thread, or a stranger holding the
+        port) in seconds instead of after an hour of confusing failures.
+        """
+        deadline = time.time() + timeout
+        while True:
+            missing = []
+            try:
+                payload = self.session.get(
+                    f"{self.tracker_url}/nodes", timeout=3
+                ).json()
+                tracker_ok = isinstance(payload, dict) and isinstance(
+                    payload.get("nodes"), list
+                )
+            except (requests.RequestException, ValueError):
+                tracker_ok = False
+            if not tracker_ok:
+                missing.append(f"tracker :{self.args.tracker_port}")
+            for i in range(self.args.trainers):
+                try:
+                    body = self.session.get(f"{self.roots[i]}/", timeout=3).text
+                    ok = 'name="user"' in body
+                except requests.RequestException:
+                    ok = False
+                if not ok:
+                    missing.append(f"trainer-{i} :{self.args.base_port + i}")
+            if not missing:
+                return
+            if time.time() >= deadline:
+                self.log(f"FATAL: servers never came up: {', '.join(missing)}")
+                raise SystemExit(1)
+            time.sleep(2)
+
     def wait_ready(self):
         deadline = time.time() + 300
         while time.time() < deadline:
@@ -180,10 +215,19 @@ class Sim:
             lambda: self.session.get(f"{self.roots[i]}/trade/unc", timeout=10).json()
         )
 
+    def mine(self, i, timeout):
+        """Mine on trainer i, failing loudly on HTTP errors (wrong server)."""
+        with_retries(lambda: self._checked_get(f"{self.roots[i]}/mine", timeout))
+
+    def _checked_get(self, url, timeout):
+        resp = self.session.get(url, timeout=timeout)
+        resp.raise_for_status()
+        return resp
+
     def phase_funding(self):
         for _ in range(self.args.funding_rounds):
             for i in range(self.args.trainers):
-                with_retries(lambda: self.session.get(f"{self.roots[i]}/mine", timeout=60))
+                self.mine(i, timeout=60)
                 time.sleep(self.args.funding_settle)
         time.sleep(SETTLE)
         lengths = sorted({len(self.chain_of(i)) for i in range(self.args.trainers)})
@@ -249,7 +293,7 @@ class Sim:
                 wait = self.args.min_round_interval - (time.time() - last_mine)
                 if wait > 0:
                     time.sleep(wait)
-                with_retries(lambda: self.session.get(f"{self.roots[miner]}/mine", timeout=90))
+                self.mine(miner, timeout=90)
                 last_mine = time.time()
                 block = self.chain_of(miner)[-1]
                 rew = int(block["rew"])
@@ -345,6 +389,7 @@ def main(argv=None):
     for i in range(args.trainers):
         threading.Thread(target=sim.run_trainer, args=(i,), daemon=True).start()
         time.sleep(args.startup_stagger)
+    sim.verify_servers()
     sim.wait_ready()
     sim.phase_funding()
     rounds = sim.phase_trading()
