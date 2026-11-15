@@ -1,305 +1,413 @@
-import hashlib
-import json
-from time import time,sleep
-from uuid import uuid4
-import pandas as pd
-from flask import Flask,jsonify,request,render_template,redirect,url_for,flash
-import random
-import pokemon
-from blockchain import Blockchain
-import requests
-import ast
-import sys
+"""Trainer node: personal chain, trading, and web UI.
+
+Fresh rewrite of the original app.py. Each trainer runs one of these
+processes: it registers with the tracker, mines blocks for Pokemon
+rewards, and trades with other trainers peer-to-peer.
+
+Routes starting with /node/ are the peer API (JSON); the rest are the
+browser UI. Template contexts match templates/ so the existing pages
+render unchanged.
+"""
+
+import argparse
 import threading
-import pandas as pd
+import time
+
+import requests
+from flask import Flask, jsonify, redirect, render_template, request, url_for
+
+from blockchain import Blockchain
+from pokedex import pokemon_name
+
+POST_TIMEOUT = 5
+GET_TIMEOUT = 10
+
+STATUS_NO_RESPONSE = "No response yet"
+STATUS_ACCEPTED = "Accepted but Unverified"
+STATUS_VERIFIED = "Verified"
+STATUS_CANCELLED = "Cancelled"
+STATUS_INVALID = "Invalid"
+REMOTE_STATUSES = {STATUS_ACCEPTED, STATUS_CANCELLED, STATUS_INVALID}
 
 
-if len(sys.argv) ==1 :
-    print("Nodetracker and port number not passed")
-    exit()
-
-if len(sys.argv) ==2 :
-    print("Port number not passed")
-    exit()
-# Instantiate our Node
-app = Flask(__name__,template_folder='templates')
-
-node = str('http://0.0.0.0:' + sys.argv[2]+ '/node')
-
-# Instantiate the Blockchain
-blockchain = Blockchain(node)
-pokedex = pd.read_csv('Kanto.csv',index_col='Nat')
-
-def pokemonname(index):
-    return pokedex['Pokemon'][index]
+def _post_json(url, payload, timeout=POST_TIMEOUT):
+    """Best-effort JSON POST. Returns the response or None."""
+    try:
+        return requests.post(url, json=payload, timeout=timeout)
+    except requests.RequestException:
+        return None
 
 
-def regnode():
-    sleep(1)
-    #Let tracker know about presence of this node
-    print("Node registration attempted")
-    url=str('http://0.0.0.0:' + sys.argv[1]+ '/nodes')
-    payload={'Node':str('http://0.0.0.0:'+ sys.argv[2]+'/node')}
-    requests.post(url,data=json.dumps(payload))
-    print("Node registration completed")
+def _get_json(url, timeout=GET_TIMEOUT):
+    """Best-effort JSON GET. Returns the decoded body or None."""
+    try:
+        return requests.get(url, timeout=timeout).json()
+    except (requests.RequestException, ValueError):
+        return None
 
 
-if(len(sys.argv)==1):
-    print("Node tracker port and node port not passed")
-    exit()
-elif(len(sys.argv)==2):
-    print("Node port not passed")
-    exit()
+def _card(dex, nat, trainer=None):
+    card = {"name": pokemon_name(dex, nat), "id": f"{nat}.png", "num": nat}
+    if trainer is not None:
+        card["trainer"] = trainer
+    return card
 
 
-@app.route('/',methods=['GET','POST'])
-def start():
-    if request.method == 'GET':
-        if blockchain.user:
-            return redirect(url_for('home'))
-        return render_template('./home.html')
-    if blockchain.user:
-        return redirect(url_for('home'))
-    username = request.form['user']
-    if username.isspace() or not username:
-        return render_template('./home.html')
-    blockchain.user = username
-    print("User initiated")
-    return redirect(url_for('home'))
-
-
-@app.route('/home')
-def home():
-    pokes=[]
-    pokenum = blockchain.own_pokes()
-    for k in pokenum:
-        pokes.append({'name':pokemonname(k),'id':str(str(k)+'.png')})
-    return render_template('./main.html',name=blockchain.user,pokes=pokes)
-
-@app.route('/node',methods=['POST'])
-def register_node():
-    data  = ast.literal_eval((request.data).decode('utf-8'))
-    print("New node received-")
-    print(data['Node'])
-    blockchain.nodereg(data['Node'])
-    if data['New'] == 'False':
-        bk = requests.get(str(data['Node']+"/chain")).json()
-        while(blockchain.currentmining):
-            pass
-        if bk['length'] > len(blockchain.chain):
-            blockchain.chain = bk['chain']
-            print("Consensus chain received")
-    return jsonify("Received")
-
-
-@app.route('/mine', methods=['GET'])
-def mine():
-    #if len(blockchain.current_trade) == 0:
-    #    return jsonify("No transactions to mine"),200
-    blockchain.currentmining = True
-    ctrade = blockchain.current_trade
-    present = {}
-    for node in blockchain.nodes:
-        present[node]= blockchain.other_pokes(node)
-    present[blockchain.node]=blockchain.own_pokes()
-    for trade in ctrade:
-        if (int(trade['sentby1']) in present[trade['trainer1']]) and (int(trade['sentby2']) in present[trade['trainer2']]):
-            present[trade['trainer1']].append(int(trade['sentby2']))
-            present[trade['trainer2']].append(int(trade['sentby1']))
-            present[trade['trainer1']].remove(int(trade['sentby1']))
-            present[trade['trainer2']].remove(int(trade['sentby2']))
-        else:
-            if str(trade['trainer1'])==str((blockchain.node)):
-                treqs=blockchain.tradereqs
-                for k in treqs:
-                    if str(k['node']) == str(trade['trainer2']) and str(k['timestamp']) == str(trade['time']):
-                        k['status']="Invalid"
-                        break
-                    blockchain.tradereqs=treqs
-                    print(treqs)
-            else:
-                url = str(trade['trainer1']+'/trade/offerresp')
-                payload={'node':trade['trainer2'],'sent':trade['sentby1'],'rec':trade['sentby2'],'tim':trade['time'],'status':'Invalid'}
-                requests.post(url,data=json.dumps(payload))
-            ctrade.remove(trade)
-            print("Invalid trade removed")
-    blockchain.trade=ctrade
-    last_block = blockchain.last_block
-    last_proof = last_block['proof']
-    proof = blockchain.proof_of_work(last_proof)
-    previous_hash = blockchain.hash(last_block)
-    block = blockchain.new_block(proof,previous_hash)
-    blockchain.currentmining = False
-    print("Mining complete")
-    payload = json.dumps({'chain':blockchain.chain,'length':len(blockchain.chain)})
-    for node in blockchain.nodes:
-        url = str(node+'/sync')
-        requests.post(url,data=payload)
-    return redirect(url_for('home'))
-
-@app.route('/trade')
-def starttrade():
-    pokes=[]
-    pokenum = blockchain.own_pokes()
-    for k in pokenum:
-        pokes.append({'name':pokemonname(k),'id':str(str(k)+'.png'),'num':k})
-    return render_template('./trade.html',name=blockchain.user,pokes=pokes)
-
-@app.route('/trade/<param>')
-def choosetrain(param):
-    nodes = blockchain.nodes
-    response=[]
-    param = int(param)
-    for n in nodes:
-        otherpokes = blockchain.other_pokes(n)
-        for i in otherpokes:
-            j = pokemonname(i)
-            response.append({'name':j,'id':(str(i)+".png"),'num':i,'trainer':n})
-    name = pokemonname(param)
-    cur = param
-    param = str(param)+'.png'
-    return render_template('./tradereq.html',name=name,id=param,pokes=response,cur=cur)
-
-@app.route('/trade/outg',methods=['GET','POST'])
-def tradereq():
-    if request.method == 'GET':
-        treq = blockchain.tradereqs
-        pokes=[]
-        chain = blockchain.chain
-        for p in treq:
-            k={}
-            i= pokemonname(p['rec'])
-            j=pokemonname(p['sent'])
-            k['rec'] = i
-            k['sent'] = j
-            k['node'] =p['node']
-            if (p['status'] == 'Accepted but Unverified'):
-                for block in blockchain.chain:
-                    for trade in block['trade']:
-                        if trade['trainer1'] == blockchain.node and str(p['timestamp']) == str(trade['time']):
-                            p['status'] = 'Verified'
-            k['status'] = p['status']
-            pokes.append(k)
-        blockchain.tradereqs=treq
-        return render_template('./tradessent.html',pokes = pokes)
-    if request.method == 'POST':
-        timestamp=time()
-        blockchain.tradereqs.append({'node':request.form['node'],'sent':int(request.form['Sendpoke']),'rec':int(request.form['Rec']),'status':'No response yet','timestamp':timestamp})
-        payload={'node':blockchain.node,'sent':request.form['Sendpoke'],'rec':request.form['Rec'],'timestamp':timestamp}
-        url=str(request.form['node']+'/trade/off')
-        requests.post(url,data = json.dumps(payload))
-        print("Offer sent")
-        return redirect('/trade/outg')
-
-@app.route('/trade/off')
-def tradeoff():
-    tre = blockchain.offers
-    pokes=[]
-    for p in tre:
-        k={}
-        i=pokemonname(p['sent'])
-        j=pokemonname(p['rec'])
-        k['sent'] = i
-        k['rec'] = j
-        k['node']=p['node']
-        k['time']=p['timestamp']
-        k['sentid']=p['sent']
-        k['recid']=p['rec']
-        pokes.append(k)
-    return render_template('./tradeoffers.html',pokes=pokes)
-
-@app.route('/node/trade/off',methods=['POST'])
-def tradeoffrec():
-    if request.method == 'POST':
-        print("Offer received")
-        data = ast.literal_eval((request.data).decode('utf-8'))
-        blockchain.offers.append({'node':data['node'],'sent':int(data['sent']),'rec':int(data['rec']),'timestamp':data['timestamp']})
-        return jsonify("Received offer")
-
-@app.route('/node/sync',methods=['POST'])
-def sync():
-    data = ast.literal_eval((request.data).decode('utf-8'))
-    print("Received new block")
-    while(blockchain.currentmining):
-        pass
-    if data['length'] > len(blockchain.chain):
-        blockchain.chain = data['chain']
-        toff = blockchain.current_trade
-        for block in blockchain.chain:
-            for trade in block['trade']:
-                for t in toff:
-                    if trade == t:
-                        toff.remove(t)
-                        print("Removed")
-        blockchain.current_trade = toff
-    return jsonify("Request complete"),200
-
-@app.route('/trade/unc')
-def returnv():
-    return jsonify(blockchain.current_trade)
-
-@app.route('/node/trade',methods=['POST'])
-def add_transaction():
-    values = ast.literal_eval((request.data).decode('utf-8'))
-    index = blockchain.new_transaction(values['trainer1'],values['trainer2'],values['sentby1'],values['sentby2'],values['time'])
-    return jsonify(blockchain.current_trade),200
-
-@app.route('/trade/resp',methods=['POST'])
-def traderesponse():
-    if request.form['submit'] == 'Accept':
-        offers = blockchain.offers
-        for o in offers:
-            if str(o['node']) == str(request.form['node']) and (str(o['sent']) == str(request.form['Sendpoke'])) and (str(o['rec']) == str(request.form['Rec'])) and (str(o['timestamp']) == str(request.form['tim'])):
-                offers.remove(o)
-                print("Offer accepted")
-                break
-        blockchain.offers = offers
-        url = str(request.form['node']+'/trade/offerresp')
-        payload={'node':blockchain.node,'sent':request.form['Sendpoke'],'rec':request.form['Rec'],'tim':request.form['tim'],'status':'Accepted but Unverified'}
-        requests.post(url,data=json.dumps(payload))
-        values={'trainer1':request.form['node'],'trainer2':blockchain.node,'sentby1':request.form['Sendpoke'],'sentby2':request.form['Rec'],'time':request.form['tim']}
-        index = blockchain.new_transaction(values['trainer1'],values['trainer2'],values['sentby1'],values['sentby2'],values['time'])
-        payload = json.dumps(values)
-        for node in blockchain.nodes:
-            url = str(node+'/trade')
-            requests.post(url,data=payload)
-        return redirect('/trade/off')
+def _mark_invalid(blockchain, trade):
+    """Record an invalid trade: locally for our own request, or notify the
+    requesting trainer so their outgoing list shows it as invalid."""
+    if trade.get("trainer1") == blockchain.node:
+        with blockchain.lock:
+            for req in blockchain.tradereqs:
+                if str(req.get("node")) == str(trade.get("trainer2")) and str(
+                    req.get("timestamp")
+                ) == str(trade.get("time")):
+                    req["status"] = STATUS_INVALID
+                    break
     else:
-        offers = blockchain.offers
-        for o in offers:
-            if str(o['node']) == str(request.form['node']) and (str(o['sent']) == str(request.form['Sendpoke'])) and (str(o['rec']) == str(request.form['Rec'])) and (str(o['timestamp']) == str(request.form['tim'])):
-                offers.remove(o)
-                print("Offer removed")
-                break
-        blockchain.offers = offers
-        url = str(request.form['node']+'/trade/offerresp')
-        payload={'node':blockchain.node,'sent':request.form['Sendpoke'],'rec':request.form['Rec'],'tim':request.form['tim'],'status':'Cancelled'}
-        requests.post(url,data=json.dumps(payload))
-        return redirect('/trade/off')
-
-@app.route('/node/trade/offerresp',methods=['POST'])
-def offresp():
-    data = ast.literal_eval((request.data).decode('utf-8'))
-    treqs=blockchain.tradereqs
-    for k in treqs:
-        print(k)
-        if str(k['node']) == str(data['node']) and str(k['timestamp']) == str(data['tim']):
-            k['status']=str(data['status'])
-            break
-    blockchain.tradereqs=treqs
-    return jsonify("Received")
+        _post_json(
+            f"{trade.get('trainer1')}/trade/offerresp",
+            {
+                "node": trade.get("trainer2"),
+                "tim": trade.get("time"),
+                "status": STATUS_INVALID,
+            },
+        )
 
 
-@app.route('/node/chain', methods=['GET'])
-def full_chain():
-    response = {
-        'chain': blockchain.chain,
-        'length': len(blockchain.chain),
-    }
-    return jsonify(response), 200
+def _refresh_outgoing_statuses(blockchain):
+    """Promote accepted requests to verified once their trade is on chain."""
+    with blockchain.lock:
+        for req in blockchain.tradereqs:
+            if req.get("status") != STATUS_ACCEPTED:
+                continue
+            for block in blockchain.chain:
+                for trade in block.get("trade", []):
+                    if trade.get("trainer1") == blockchain.node and str(
+                        req.get("timestamp")
+                    ) == str(trade.get("time")):
+                        req["status"] = STATUS_VERIFIED
+                        break
 
-if __name__ == '__main__':
-    port = int(sys.argv[2])
-    t1 = threading.Thread(target=regnode)
-    t1.start()
-    app.run(host='0.0.0.0', port=port)
+
+def register_with_tracker(tracker_url, node_url, attempts=5, delay=1.0):
+    """Register this trainer with the tracker, retrying if it is not up yet."""
+    for _ in range(attempts):
+        resp = _post_json(f"{tracker_url}/nodes", {"node": node_url})
+        if resp is not None and resp.ok:
+            return True
+        time.sleep(delay)
+    return False
+
+
+def create_app(node_url, tracker_url=None):
+    """Build the trainer Flask app. Testable without network or processes."""
+    app = Flask(__name__, template_folder="templates")
+    blockchain = Blockchain(node_url)
+    app.blockchain = blockchain
+    app.config["TRACKER_URL"] = tracker_url
+
+    @app.route("/", methods=["GET", "POST"])
+    def start():
+        if blockchain.user:
+            return redirect(url_for("home"))
+        if request.method == "POST":
+            username = (request.form.get("user") or "").strip()
+            if not username:
+                return render_template("home.html")
+            blockchain.user = username
+            return redirect(url_for("home"))
+        return render_template("home.html")
+
+    @app.route("/home")
+    def home():
+        if not blockchain.user:
+            return redirect(url_for("start"))
+        pokes = [
+            {"name": pokemon_name(blockchain.dex, n), "id": f"{n}.png"}
+            for n in blockchain.own_pokes()
+        ]
+        return render_template("main.html", name=blockchain.user, pokes=pokes)
+
+    @app.route("/node", methods=["POST"])
+    def register_node():
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or not isinstance(data.get("node"), str):
+            return jsonify({"error": "expected JSON {'node': url}"}), 400
+        peer = data["node"]
+        blockchain.nodereg(peer)
+        if data.get("fetch_chain"):
+            payload = _get_json(f"{peer}/chain")
+            chain = payload.get("chain") if isinstance(payload, dict) else None
+            if isinstance(chain, list):
+                blockchain.replace_chain(chain)
+        return jsonify({"status": "registered"}), 200
+
+    @app.route("/node/chain", methods=["GET"])
+    def full_chain():
+        with blockchain.lock:
+            return (
+                jsonify({"chain": blockchain.chain, "length": len(blockchain.chain)}),
+                200,
+            )
+
+    @app.route("/mine", methods=["GET"])
+    def mine():
+        with blockchain.lock:
+            valid, invalid = blockchain.filter_valid_trades()
+            blockchain.current_trade = valid
+            for trade in invalid:
+                _mark_invalid(blockchain, trade)
+            last = blockchain.last_block
+            proof = blockchain.proof_of_work(last["proof"])
+            blockchain.new_block(proof, blockchain.hash(last))
+            payload = {"chain": blockchain.chain, "length": len(blockchain.chain)}
+            peers = sorted(blockchain.nodes)
+        for peer in peers:
+            _post_json(f"{peer}/sync", payload)
+        return redirect(url_for("home"))
+
+    @app.route("/node/sync", methods=["POST"])
+    def sync():
+        data = request.get_json(silent=True)
+        chain = data.get("chain") if isinstance(data, dict) else None
+        if not isinstance(chain, list):
+            return jsonify({"error": "expected JSON {'chain': [...]}}"}), 400
+        adopted = blockchain.replace_chain(chain)
+        return jsonify({"status": "adopted" if adopted else "kept"}), 200
+
+    @app.route("/trade", methods=["GET"])
+    def starttrade():
+        pokes = [_card(blockchain.dex, n) for n in blockchain.own_pokes()]
+        return render_template("trade.html", name=blockchain.user, pokes=pokes)
+
+    @app.route("/trade/<int:param>", methods=["GET"])
+    def choosetrain(param):
+        if param not in blockchain.own_pokes():
+            return redirect(url_for("starttrade"))
+        dex = blockchain.dex
+        with blockchain.lock:
+            peers = sorted(blockchain.nodes)
+        response = []
+        for peer in peers:
+            for nat in blockchain.other_pokes(peer):
+                response.append(_card(dex, nat, trainer=peer))
+        return render_template(
+            "tradereq.html",
+            name=pokemon_name(dex, param),
+            id=f"{param}.png",
+            pokes=response,
+            cur=param,
+        )
+
+    @app.route("/trade/outg", methods=["GET", "POST"])
+    def tradereq():
+        if request.method == "POST":
+            try:
+                send_nat = int(request.form.get("Sendpoke", ""))
+                rec_nat = int(request.form.get("Rec", ""))
+            except (TypeError, ValueError):
+                return redirect(url_for("starttrade"))
+            peer = request.form.get("node", "")
+            if (
+                not peer
+                or peer == blockchain.node
+                or send_nat not in blockchain.dex
+                or rec_nat not in blockchain.dex
+                or send_nat not in blockchain.own_pokes()
+            ):
+                return redirect(url_for("starttrade"))
+            timestamp = time.time()
+            with blockchain.lock:
+                blockchain.tradereqs.append(
+                    {
+                        "node": peer,
+                        "sent": send_nat,
+                        "rec": rec_nat,
+                        "status": STATUS_NO_RESPONSE,
+                        "timestamp": timestamp,
+                    }
+                )
+            _post_json(
+                f"{peer}/trade/off",
+                {
+                    "node": blockchain.node,
+                    "sent": send_nat,
+                    "rec": rec_nat,
+                    "timestamp": timestamp,
+                },
+            )
+            return redirect(url_for("tradereq"))
+        _refresh_outgoing_statuses(blockchain)
+        with blockchain.lock:
+            treqs = list(blockchain.tradereqs)
+        pokes = [
+            {
+                "rec": pokemon_name(blockchain.dex, p["rec"]),
+                "sent": pokemon_name(blockchain.dex, p["sent"]),
+                "node": p["node"],
+                "status": p["status"],
+            }
+            for p in treqs
+        ]
+        return render_template("tradessent.html", pokes=pokes)
+
+    @app.route("/trade/off", methods=["GET"])
+    def tradeoff():
+        with blockchain.lock:
+            offers = list(blockchain.offers)
+        pokes = [
+            {
+                "sent": pokemon_name(blockchain.dex, p["sent"]),
+                "rec": pokemon_name(blockchain.dex, p["rec"]),
+                "node": p["node"],
+                "time": p["timestamp"],
+                "sentid": p["sent"],
+                "recid": p["rec"],
+            }
+            for p in offers
+        ]
+        return render_template("tradeoffers.html", pokes=pokes)
+
+    @app.route("/node/trade/off", methods=["POST"])
+    def tradeoffrec():
+        data = request.get_json(silent=True)
+        try:
+            peer = data["node"]
+            send_nat = int(data["sent"])
+            rec_nat = int(data["rec"])
+            timestamp = data["timestamp"]
+        except (TypeError, KeyError, ValueError):
+            return jsonify({"error": "expected an offer object"}), 400
+        if (
+            not isinstance(peer, str)
+            or not peer
+            or timestamp is None
+            or send_nat not in blockchain.dex
+            or rec_nat not in blockchain.dex
+        ):
+            return jsonify({"error": "expected an offer object"}), 400
+        with blockchain.lock:
+            for offer in blockchain.offers:
+                if str(offer.get("node")) == peer and str(
+                    offer.get("timestamp")
+                ) == str(timestamp):
+                    break
+            else:
+                blockchain.offers.append(
+                    {
+                        "node": peer,
+                        "sent": send_nat,
+                        "rec": rec_nat,
+                        "timestamp": timestamp,
+                    }
+                )
+        return jsonify({"status": "received"}), 200
+
+    @app.route("/trade/unc", methods=["GET"])
+    def returnv():
+        with blockchain.lock:
+            return jsonify(list(blockchain.current_trade)), 200
+
+    @app.route("/node/trade", methods=["POST"])
+    def add_transaction():
+        data = request.get_json(silent=True)
+        try:
+            blockchain.new_transaction(
+                data["trainer1"],
+                data["trainer2"],
+                data["sentby1"],
+                data["sentby2"],
+                data["time"],
+            )
+        except (TypeError, KeyError, ValueError):
+            return jsonify({"error": "expected a trade object"}), 400
+        return jsonify({"status": "queued"}), 200
+
+    @app.route("/trade/resp", methods=["POST"])
+    def traderesponse():
+        node = request.form.get("node", "")
+        tim = request.form.get("tim", "")
+        with blockchain.lock:
+            offer = None
+            for cand in blockchain.offers:
+                if (
+                    str(cand.get("node")) == node
+                    and str(cand.get("sent")) == request.form.get("Sendpoke", "")
+                    and str(cand.get("rec")) == request.form.get("Rec", "")
+                    and str(cand.get("timestamp")) == tim
+                ):
+                    offer = cand
+                    break
+            if offer is not None:
+                blockchain.offers.remove(offer)
+        if offer is None:
+            return redirect(url_for("tradeoff"))
+        if request.form.get("submit") == "Accept":
+            _post_json(
+                f"{node}/trade/offerresp",
+                {"node": blockchain.node, "tim": tim, "status": STATUS_ACCEPTED},
+            )
+            try:
+                blockchain.new_transaction(
+                    node, blockchain.node, offer["sent"], offer["rec"], tim
+                )
+            except ValueError:
+                pass
+            values = {
+                "trainer1": node,
+                "trainer2": blockchain.node,
+                "sentby1": offer["sent"],
+                "sentby2": offer["rec"],
+                "time": tim,
+            }
+            with blockchain.lock:
+                peers = sorted(blockchain.nodes)
+            for peer in peers:
+                _post_json(f"{peer}/trade", values)
+        else:
+            _post_json(
+                f"{node}/trade/offerresp",
+                {"node": blockchain.node, "tim": tim, "status": STATUS_CANCELLED},
+            )
+        return redirect(url_for("tradeoff"))
+
+    @app.route("/node/trade/offerresp", methods=["POST"])
+    def offresp():
+        data = request.get_json(silent=True)
+        if (
+            not isinstance(data, dict)
+            or not isinstance(data.get("node"), str)
+            or data.get("tim") is None
+            or data.get("status") not in REMOTE_STATUSES
+        ):
+            return jsonify({"error": "expected an offer response"}), 400
+        with blockchain.lock:
+            for req in blockchain.tradereqs:
+                if str(req.get("node")) == data["node"] and str(
+                    req.get("timestamp")
+                ) == str(data["tim"]):
+                    req["status"] = data["status"]
+                    break
+        return jsonify({"status": "received"}), 200
+
+    return app
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Pokemon trading trainer node")
+    parser.add_argument("tracker_port", type=int, help="tracker port")
+    parser.add_argument("trainer_port", type=int, help="this trainer's port")
+    args = parser.parse_args(argv)
+    node_url = f"http://127.0.0.1:{args.trainer_port}/node"
+    tracker_url = f"http://127.0.0.1:{args.tracker_port}"
+    app = create_app(node_url, tracker_url)
+    thread = threading.Thread(
+        target=register_with_tracker, args=(tracker_url, node_url), daemon=True
+    )
+    thread.start()
+    app.run(host="0.0.0.0", port=args.trainer_port, threaded=True)
+
+
+if __name__ == "__main__":
+    main()

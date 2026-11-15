@@ -1,5 +1,6 @@
 import copy
 import threading
+from collections import Counter
 
 import pytest
 
@@ -131,13 +132,16 @@ def test_holdings_mining_and_trade(dex):
     assert invalid == []
     assert len(valid) == 1
     bc.current_trade = valid
+    before_a = Counter(have_a)
+    before_b = Counter(have_b)
     mine(bc)
-    after_a = bc.holdings("A")
-    after_b = bc.holdings("B")
-    assert give_b in after_a and give_a not in after_a
-    assert give_a in after_b and give_b not in after_b
-    assert bc.own_pokes() == after_a
-    assert bc.other_pokes("B") == after_b
+    reward = bc.last_block["rew"]
+    assert Counter(bc.holdings("A")) == before_a - Counter([give_a]) + Counter(
+        [give_b, reward]
+    )
+    assert Counter(bc.holdings("B")) == before_b - Counter([give_b]) + Counter([give_a])
+    assert bc.own_pokes() == bc.holdings("A")
+    assert bc.other_pokes("B") == bc.holdings("B")
 
 
 def test_filter_valid_trades_chains_within_batch(dex):
