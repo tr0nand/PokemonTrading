@@ -80,4 +80,18 @@ def test_build_dashboard_uses_longest_chain(monkeypatch):
     data = build_dashboard(TRACKER, (), load_dex(), Blockchain("t"))
     assert data["chain_length"] == 2
     assert f"{B}/chain" in calls  # longest holder supplies the shared view
-    assert [t["label"] for t in data["trainers"]] == ["Ash :5001", "Misty :5002"]
+    assert [t["label"] for t in data["trainers"]] == ["Misty :5002", "Ash :5001"]
+    assert data["total_mons"] == 2
+    assert [(r["name"], r["trainer"]) for r in data["all_rares"]] == [
+        ("Mewtwo", "Misty :5002")
+    ]
+
+
+def test_dashboard_compact_rows_sorted_by_rares(monkeypatch):
+    fake_network(monkeypatch, [info(A, "Ash", 2, 1), info(B, "", 2, 0)])
+    page = create_monitor(TRACKER, ()).test_client().get("/").data.decode()
+    assert "<details" in page
+    assert "Rares (1)" in page
+    assert "2 pokemon" in page
+    assert "R1&times;1" in page and "R5&times;1" in page
+    assert page.find("Trainer :5002") < page.find("Ash :5001")

@@ -103,6 +103,9 @@ def build_dashboard(tracker_url, trainers, dex, calc):
                     }
                 )
         info = info or {}
+        counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        for m in mons:
+            counts[m["rarity"]] += 1
         cards.append(
             {
                 "label": label(url, info.get("user", "")),
@@ -111,10 +114,24 @@ def build_dashboard(tracker_url, trainers, dex, calc):
                 "length": info.get("length"),
                 "pending": info.get("pending"),
                 "mons": mons,
+                "counts": counts,
                 "rares": [m for m in mons if m["rarity"] >= 4],
             }
         )
-    return {"trainers": cards, "count": len(urls), "chain_length": len(chain)}
+    cards.sort(key=lambda t: (-len(t["rares"]), -len(t["mons"]), t["label"]))
+    all_rares = [
+        {"trainer": t["label"], "name": m["name"], "rarity": m["rarity"]}
+        for t in cards
+        for m in t["rares"]
+    ]
+    all_rares.sort(key=lambda r: (-r["rarity"], r["name"]))
+    return {
+        "trainers": cards,
+        "count": len(urls),
+        "chain_length": len(chain),
+        "total_mons": sum(len(t["mons"]) for t in cards),
+        "all_rares": all_rares,
+    }
 
 
 def create_monitor(tracker_url=None, trainers=(), refresh=15):
