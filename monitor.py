@@ -46,12 +46,26 @@ def discover_trainers(tracker_url, explicit):
     return sorted(n for n in nodes if isinstance(n, str) and n)
 
 
+def _unc_url(node_url):
+    base = node_url[: -len("/node")] if node_url.endswith("/node") else node_url
+    return f"{base}/trade/unc"
+
+
 def fetch_infos(trainers):
-    """Map each trainer URL to its /node/info payload (None if unreachable)."""
+    """Map each trainer URL to its /node/info payload (None if unreachable).
+
+    Trainers predating /node/info fall back to their pending queue: that
+    still proves reachability and yields a live pending count.
+    """
 
     def one(url):
         payload = _get_json(f"{url}/info", INFO_TIMEOUT)
-        return url, payload if isinstance(payload, dict) else None
+        if isinstance(payload, dict):
+            return url, payload
+        unc = _get_json(_unc_url(url), INFO_TIMEOUT)
+        if not isinstance(unc, list):
+            return url, None
+        return url, {"node": url, "user": "", "length": None, "pending": len(unc)}
 
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         return dict(pool.map(one, trainers))
@@ -76,6 +90,8 @@ def build_dashboard(tracker_url, trainers, dex, calc):
         if isinstance(length, int) and length > best_len:
             best, best_len = url, length
     chain = []
+    if best is None:
+        best = next((u for u in urls if infos.get(u) is not None), None)
     if best is not None:
         payload = _get_json(f"{best}/chain", CHAIN_TIMEOUT)
         if isinstance(payload, dict) and isinstance(payload.get("chain"), list):
@@ -119,18 +135,26 @@ def build_dashboard(tracker_url, trainers, dex, calc):
             }
         )
     cards.sort(key=lambda t: (-len(t["rares"]), -len(t["mons"]), t["label"]))
-    all_rares = [
-        {"trainer": t["label"], "name": m["name"], "rarity": m["rarity"]}
-        for t in cards
-        for m in t["rares"]
-    ]
-    all_rares.sort(key=lambda r: (-r["rarity"], r["name"]))
+    max_rarity = 0
+    for t in cards:
+        for m in t["mons"]:
+            max_rarity = max(max_rarity, m["rarity"])
+    top_rares = []
+    if max_rarity >= 4:
+        top_rares = [
+            {"trainer": t["label"], "name": m["name"], "rarity": m["rarity"]}
+            for t in cards
+            for m in t["mons"]
+            if m["rarity"] == max_rarity
+        ]
+        top_rares.sort(key=lambda r: r["name"])
     return {
         "trainers": cards,
         "count": len(urls),
         "chain_length": len(chain),
         "total_mons": sum(len(t["mons"]) for t in cards),
-        "all_rares": all_rares,
+        "max_rarity": max_rarity,
+        "top_rares": top_rares,
     }
 
 

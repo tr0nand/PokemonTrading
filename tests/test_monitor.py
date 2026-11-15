@@ -11,7 +11,7 @@ CHAIN = [
 ]
 
 
-def fake_network(monkeypatch, infos):
+def fake_network(monkeypatch, infos, unc=None, chain=CHAIN):
     calls = []
 
     def fake(url, timeout):
@@ -23,7 +23,9 @@ def fake_network(monkeypatch, infos):
         if url == f"{B}/info":
             return infos[1]
         if url in (f"{A}/chain", f"{B}/chain"):
-            return {"chain": CHAIN}
+            return {"chain": chain}
+        if url.endswith("/trade/unc"):
+            return unc
         raise AssertionError(f"unexpected {url}")
 
     monkeypatch.setattr(monitor_mod, "_get_json", fake)
@@ -82,7 +84,8 @@ def test_build_dashboard_uses_longest_chain(monkeypatch):
     assert f"{B}/chain" in calls  # longest holder supplies the shared view
     assert [t["label"] for t in data["trainers"]] == ["Misty :5002", "Ash :5001"]
     assert data["total_mons"] == 2
-    assert [(r["name"], r["trainer"]) for r in data["all_rares"]] == [
+    assert data["max_rarity"] == 5
+    assert [(r["name"], r["trainer"]) for r in data["top_rares"]] == [
         ("Mewtwo", "Misty :5002")
     ]
 
@@ -91,7 +94,41 @@ def test_dashboard_compact_rows_sorted_by_rares(monkeypatch):
     fake_network(monkeypatch, [info(A, "Ash", 2, 1), info(B, "", 2, 0)])
     page = create_monitor(TRACKER, ()).test_client().get("/").data.decode()
     assert "<details" in page
-    assert "Rares (1)" in page
+    assert "Rarest held (R5)" in page
     assert "2 pokemon" in page
     assert "R1&times;1" in page and "R5&times;1" in page
     assert page.find("Trainer :5002") < page.find("Ash :5001")
+
+
+def test_fallback_without_node_info(monkeypatch):
+    from blockchain import Blockchain
+    from pokedex import load_dex
+
+    fake_network(monkeypatch, [None, None], unc=[])
+    data = build_dashboard(TRACKER, (), load_dex(), Blockchain("t"))
+    assert [t["label"] for t in data["trainers"]] == ["Trainer :5002", "Trainer :5001"]
+    assert all(t["reachable"] for t in data["trainers"])
+    assert [t["pending"] for t in data["trainers"]] == [0, 0]
+    assert data["trainers"][0]["mons"][0]["name"] == "Mewtwo"
+    page = create_monitor(TRACKER, ()).test_client().get("/").data.decode()
+    assert "unreachable" not in page
+    assert "Block ?" in page
+    assert "Mewtwo" in page
+
+
+def test_rarest_board_tracks_top_tier(monkeypatch):
+    from blockchain import Blockchain
+    from pokedex import load_dex
+
+    both = [{"miner": A, "rew": 6, "trade": []}, {"miner": B, "rew": 150, "trade": []}]
+    fake_network(monkeypatch, [info(A, "Ash"), info(B, "Misty")], chain=both)
+    data = build_dashboard(TRACKER, (), load_dex(), Blockchain("t"))
+    assert data["max_rarity"] == 5
+    assert [(r["name"], r["trainer"]) for r in data["top_rares"]] == [
+        ("Mewtwo", "Misty :5002")
+    ]
+    common = [{"miner": A, "rew": 10, "trade": []}]
+    fake_network(monkeypatch, [info(A, "Ash"), info(B, "Misty")], chain=common)
+    data = build_dashboard(TRACKER, (), load_dex(), Blockchain("t"))
+    assert data["max_rarity"] == 1
+    assert data["top_rares"] == []
