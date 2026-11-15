@@ -149,6 +149,8 @@ def test_chain_view_renders_blocks_newest_first(monkeypatch):
     page = create_monitor(TRACKER, ()).test_client().get("/chain").data.decode()
     assert "Blockchain (2 blocks)" in page
     assert page.find("Block 2") < page.find("Block 1")
+    assert page.count("<details") == 2
+    assert page.count(" open>") == 1  # newest block starts expanded
     assert "Caterpie" in page
     assert "Mewtwo" in page
     assert ">R5<" in page
