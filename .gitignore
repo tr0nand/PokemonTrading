@@ -1,0 +1,13 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Virtualenv
+.venv/
+
+# Test cache
+.pytest_cache/
+
+# Per-node chain data (added when persistence lands)
+node-data/
+*.db
