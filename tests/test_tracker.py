@@ -68,7 +68,7 @@ def test_dead_peer_does_not_break_registration(monkeypatch):
     def boom(*args, **kwargs):
         raise requests.ConnectionError("down")
 
-    monkeypatch.setattr(nodetracker._SESSION, "post", boom)
+    monkeypatch.setattr(nodetracker.requests, "post", boom)
     client = create_tracker().test_client()
     assert client.post("/nodes", json={"node": A}).status_code == 200
     resp = client.post("/nodes", json={"node": B})
@@ -85,16 +85,10 @@ def test_rejects_oversized_body():
     assert resp.status_code == 413
 
 
-def test_announce_reuses_shared_session(monkeypatch):
+def test_announce_reports_success(monkeypatch):
     from types import SimpleNamespace
 
-    seen = []
-
-    def fake_post(self, url, **kwargs):
-        seen.append(self)
-        return SimpleNamespace(status_code=200)
-
-    monkeypatch.setattr(requests.Session, "post", fake_post)
+    monkeypatch.setattr(
+        requests, "post", lambda *a, **k: SimpleNamespace(status_code=200)
+    )
     assert nodetracker.announce("http://x/1", {}) is True
-    assert nodetracker.announce("http://x/2", {}) is True
-    assert seen == [nodetracker._SESSION, nodetracker._SESSION]

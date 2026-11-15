@@ -503,14 +503,9 @@ def test_start_form_has_submit_button():
     assert b'type="submit"' in client.get("/").data
 
 
-def test_post_json_reuses_shared_session(monkeypatch):
-    seen = []
+def test_post_json_returns_none_on_failure(monkeypatch):
+    def boom(*args, **kwargs):
+        raise requests.ConnectionError("down")
 
-    def fake_post(self, url, **kwargs):
-        seen.append(self)
-        return SimpleNamespace(ok=True, status_code=200)
-
-    monkeypatch.setattr(requests.Session, "post", fake_post)
-    trainer_app._post_json("http://x/1", {})
-    trainer_app._post_json("http://x/2", {})
-    assert seen == [trainer_app._SESSION, trainer_app._SESSION]
+    monkeypatch.setattr(requests, "post", boom)
+    assert trainer_app._post_json("http://x/1", {}) is None

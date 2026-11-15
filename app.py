@@ -15,7 +15,6 @@ import time
 
 import requests
 from flask import Flask, jsonify, redirect, render_template, request, url_for
-from requests.adapters import HTTPAdapter
 
 from blockchain import Blockchain
 from pokedex import pokemon_name
@@ -31,17 +30,10 @@ STATUS_INVALID = "Invalid"
 REMOTE_STATUSES = {STATUS_ACCEPTED, STATUS_CANCELLED, STATUS_INVALID}
 
 
-# Shared keep-alive session: without reuse, a broadcast round opens a fresh
-# connection per peer and localhost runs out of ephemeral ports (TIME_WAIT).
-_SESSION = requests.Session()
-_SESSION.mount("http://", HTTPAdapter(pool_connections=128, pool_maxsize=8))
-_SESSION.mount("https://", HTTPAdapter(pool_connections=128, pool_maxsize=8))
-
-
 def _post_json(url, payload, timeout=POST_TIMEOUT):
     """Best-effort JSON POST. Returns the response or None."""
     try:
-        return _SESSION.post(url, json=payload, timeout=timeout)
+        return requests.post(url, json=payload, timeout=timeout)
     except requests.RequestException:
         return None
 
@@ -49,7 +41,7 @@ def _post_json(url, payload, timeout=POST_TIMEOUT):
 def _get_json(url, timeout=GET_TIMEOUT):
     """Best-effort JSON GET. Returns the decoded body or None."""
     try:
-        return _SESSION.get(url, timeout=timeout).json()
+        return requests.get(url, timeout=timeout).json()
     except (requests.RequestException, ValueError):
         return None
 
