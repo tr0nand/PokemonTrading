@@ -75,3 +75,11 @@ def test_dead_peer_does_not_break_registration(monkeypatch):
     assert resp.status_code == 200
     assert resp.get_json()["status"] == "registered"
     assert client.get("/nodes").get_json() == {"nodes": [A, B]}
+
+
+def test_rejects_oversized_body():
+    application = create_tracker()
+    application.config["MAX_CONTENT_LENGTH"] = 100
+    client = application.test_client()
+    resp = client.post("/nodes", json={"node": "x" * 1000})
+    assert resp.status_code == 413

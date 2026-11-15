@@ -86,6 +86,8 @@ class Blockchain:
     def new_block(self, proof, previous_hash=None):
         """Forge a block carrying the currently queued trades."""
         with self.lock:
+            if not self.chain and previous_hash is None:
+                raise ValueError("genesis block needs an explicit previous_hash")
             trades = list(self.current_trade)
             self.current_trade = []
             block = {
@@ -231,13 +233,15 @@ class Blockchain:
         if not chain:
             return False
         genesis = chain[0]
+        if not isinstance(genesis, dict):
+            return False
         if (
             genesis.get("index") != 1
             or genesis.get("previous_hash") != "0"
             or genesis.get("proof") != 0
-            or "trade" not in genesis
+            or not isinstance(genesis.get("trade"), list)
             or "rew" not in genesis
-            or "miner" not in genesis
+            or not isinstance(genesis.get("miner"), str)
         ):
             return False
         try:
@@ -260,6 +264,8 @@ class Blockchain:
 
         prev = genesis
         for block in chain[1:]:
+            if not isinstance(block, dict):
+                return False
             for key in (
                 "index",
                 "timestamp",
@@ -271,6 +277,12 @@ class Blockchain:
             ):
                 if key not in block:
                     return False
+            if not isinstance(block["trade"], list):
+                return False
+            if not isinstance(block["miner"], str):
+                return False
+            if not isinstance(block["proof"], int):
+                return False
             if block["index"] != prev["index"] + 1:
                 return False
             prev_hash = self.hash(prev)
@@ -293,6 +305,8 @@ class Blockchain:
                     sentby2 = int(trade["sentby2"])
                 except (KeyError, TypeError, ValueError):
                     return False
+                if not isinstance(trainer1, str) or not isinstance(trainer2, str):
+                    return False
                 have1 = balance(trainer1)
                 have2 = balance(trainer2)
                 if sentby1 not in have1 or sentby2 not in have2:
@@ -312,10 +326,15 @@ class Blockchain:
     def replace_chain(self, new_chain):
         """Adopt *new_chain* when it is longer and valid. Returns bool."""
         with self.lock:
+            if not isinstance(new_chain, list):
+                return False
             if len(new_chain) <= len(self.chain):
                 return False
             if not self.valid_chain(new_chain):
                 return False
-            self.chain = json.loads(json.dumps(new_chain))
+            try:
+                self.chain = json.loads(json.dumps(new_chain))
+            except (TypeError, ValueError):
+                return False
             self.prune_confirmed_trades()
             return True

@@ -34,6 +34,7 @@ def announce(url, payload):
 def create_tracker():
     """Build the tracker Flask app. Testable without a live server."""
     app = Flask(__name__)
+    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
     nodes = set()
     lock = threading.Lock()
 
