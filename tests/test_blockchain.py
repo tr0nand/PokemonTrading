@@ -244,8 +244,10 @@ def test_valid_chain_rejects_tampered_trade(dex):
     b_mon = bc.holdings("B")[0]
     bc.new_transaction("A", "B", a_mon, b_mon, 1.0)
     mine(bc)
+    owned = set(bc.holdings("A")) | set(bc.holdings("B"))
+    stray = next(n for n in range(1, 152) if n not in owned)
     tampered = copy.deepcopy(bc.chain)
-    tampered[3]["trade"][0]["sentby1"] = 10
+    tampered[3]["trade"][0]["sentby1"] = stray
     assert bc.valid_chain(tampered) is False
 
 
