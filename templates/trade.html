@@ -1,41 +1,33 @@
-<title>Pokemon Trading</title>
-<style>
-
-body {
-  background-image: url({{url_for('static',filename='img/charbackground.png')}});
-  background-repeat:no-repeat;
-  background-size:100% 100vh;
-  background-attachment: fixed;
-}
-
-</style>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-<link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
-<body>
-<center>
-<b style="font-size:40px;">{{name}} Trade Pokemon</b>
-<br><br><br><br>
-<a href='/home'>Home</a>
-<a href='trade/outg'>View Trade Requests</a>
-<a href='trade/off'>View Trade Offers</a>
-<a href = 'trade/unc'>View Unconfirmed Trades</a>
-<br><br>
-<b style = "font-size:20px">Choose Pokemon to trade</b>
-<br><br>
-</center>
-
-<br><br>
-{% if pokes %}
-
-{% for k in pokes %}
-<a href = "/trade/{{k.num}}"><img src="/static/img/pokemon/{{ k.id }}" alt={{k.name}}  width="320" height="240" />
-<br>
-{{k.name}}</a>
-<br>
-{% endfor %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trade Pokemon</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='img/pokeball.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="game">
+<div class="page">
+  <div class="topbar"><h1>{{ name }} &mdash; Trade Pokemon</h1></div>
+  <nav class="actions">
+    <a class="btn secondary" href="/home">Home</a>
+    <a class="btn secondary" href="/trade/outg">View Trade Requests</a>
+    <a class="btn secondary" href="/trade/off">View Trade Offers</a>
+    <a class="btn secondary" href="/trade/unc">View Unconfirmed Trades</a>
+  </nav>
+  <h2>Choose Pokemon to trade</h2>
+  {% if pokes %}
+  <div class="grid">
+    {% for k in pokes %}
+    <a class="card" href="/trade/{{ k.num }}">
+      <img src="/static/img/pokemon/{{ k.id }}" alt="{{ k.name }}">
+      <div class="name">{{ k.name }}</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><p>No Pokemon currently owned. Mine blocks to capture Pokemon</p></div>
+  {% endif %}
+</div>
 </body>
-{% else %}
-<center>
-<b id = "warn">No Pokemon currently owned. Mine blocks to capture Pokemon</b>
-</center>
-{% endif %}
+</html>

@@ -1,31 +1,23 @@
-
-<style>
-
-body {
-  background-image: url({{url_for('static',filename='img/back.png')}});
-  background-repeat:no-repeat;
-  background-size:100% 100vh;
-}
-
-stepd{
-  position:absolute;
-  left:128px;
-  top:300px;
-}
-</style>
-
-
-
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
+<meta charset="utf-8">
+<title>Pokemon Trading</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='img/pokeball.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<title>Pokemon Trading</Title>
-<form method = "post">
-<stepd>
-
-<input id="username" name = "user" type = "text" style="font-size:20pt;height:50px;left:100px" placeholder="Enter name">
-</stepd>
-</form>
-<body>
-
+<body class="start">
+<div class="page">
+  <div class="panel">
+    <h1>Pokemon Trading</h1>
+    <form method="post">
+      <label for="username">Trainer name</label>
+      <input id="username" name="user" type="text" placeholder="Enter name" autofocus>
+      <div class="row">
+        <button class="btn" type="submit">Start</button>
+      </div>
+    </form>
+  </div>
+</div>
 </body>
+</html>

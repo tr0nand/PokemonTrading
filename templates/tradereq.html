@@ -1,42 +1,41 @@
-<title>Pokemon Trading</title>
-<style>
-
-body {
-  background-image: url({{url_for('static',filename='img/charbackground.png')}});
-  background-repeat:no-repeat;
-  background-size:100% 100vh;
-  background-attachment: fixed;
-}
-
-</style>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-<link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
-<body>
-<center>
-<b style="font-size:40px;">Trade {{name}}</b>
-<br><br><br><br>
-<a href='/home'>Home</a>
-<a href='/trade/outg'>View Trade Requests</a>
-<a href='/trade/off'>View Trade Offers</a>
-<a href = '/trade/unc'>View Unconfirmed Trades</a>
-<br><br>
-<b style = "font-size:20px">Choose Pokemon to receive</b>
-<br><br>
-</center>
-
-<br><br>
-
-
-{% for k in pokes %}
-<form name = "submitForm" method="POST" action = "/trade/outg">
-<input type = "hidden" name="node" value={{k.trainer}}>
-<input type = "hidden" name="Sendpoke" value={{cur}}>
-<input type = "hidden" name="Rec" value = {{k.num}}>
-<input type = "image" name = "submit" src="/static/img/pokemon/{{ k.id }}" alt = "Submit" width="320" height="240" >
-<br>
-{{ k.name }}
-<br>
-<b>Trainer : {{k.trainer}}</b>
-<br><br>
-</form>
-{% endfor %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trade {{ name }}</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='img/pokeball.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="game">
+<div class="page">
+  <div class="topbar"><h1>Trade {{ name }}</h1></div>
+  <nav class="actions">
+    <a class="btn secondary" href="/home">Home</a>
+    <a class="btn secondary" href="/trade/outg">View Trade Requests</a>
+    <a class="btn secondary" href="/trade/off">View Trade Offers</a>
+    <a class="btn secondary" href="/trade/unc">View Unconfirmed Trades</a>
+  </nav>
+  <h2>Choose Pokemon to receive</h2>
+  {% if pokes %}
+  <div class="grid">
+    {% for k in pokes %}
+    <div class="card">
+      <form method="post" action="/trade/outg">
+        <input type="hidden" name="node" value="{{ k.trainer }}">
+        <input type="hidden" name="Sendpoke" value="{{ cur }}">
+        <input type="hidden" name="Rec" value="{{ k.num }}">
+        <button class="imgbtn" type="submit">
+          <img src="/static/img/pokemon/{{ k.id }}" alt="{{ k.name }}">
+        </button>
+        <div class="name">{{ k.name }}</div>
+        <div class="trainer">{{ k.trainer }}</div>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><p>No Pokemon available from other trainers right now.</p></div>
+  {% endif %}
+</div>
+</body>
+</html>

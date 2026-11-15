@@ -1,0 +1,139 @@
+/* Shared game styles. Identity comes from the official-art backgrounds,
+ * the sprite collection, and Pokemon-red actions. No external assets. */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #222;
+}
+body.start {
+  background: url("/static/img/back.png") no-repeat center center fixed;
+  background-size: cover;
+  min-height: 100vh;
+}
+body.game {
+  background: url("/static/img/charbackground.png") no-repeat center center fixed;
+  background-size: cover;
+  min-height: 100vh;
+}
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.topbar h1 {
+  font-size: 28px;
+  margin: 0 0 8px;
+}
+nav.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0 20px;
+}
+a.btn,
+button.btn {
+  display: inline-block;
+  background: #e3350d;
+  color: #fff;
+  text-decoration: none;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+}
+a.btn.secondary,
+button.btn.secondary {
+  background: #fff;
+  color: #1a1a1a;
+  border: 1px solid #ccc;
+}
+.stats {
+  color: #444;
+  margin: 0 0 16px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.card img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.card .name {
+  font-weight: 600;
+  margin-top: 6px;
+}
+a.card {
+  color: inherit;
+  text-decoration: none;
+  display: block;
+}
+.panel {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 16px;
+  max-width: 560px;
+}
+.offer {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  max-width: 560px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+input[type="text"] {
+  font-size: 18px;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.empty {
+  background: #fff;
+  border: 1px dashed #ccc;
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  max-width: 560px;
+}
+.trainer {
+  font-size: 13px;
+  color: #555;
+  word-break: break-all;
+}
+.imgbtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.imgbtn img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}

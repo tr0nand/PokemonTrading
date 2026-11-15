@@ -1,38 +1,37 @@
-<title>Pokemon Trading</title>
-<style>
-
-body {
-  background-image: url({{url_for('static',filename='img/charbackground.png')}});
-  background-repeat:no-repeat;
-  background-size:100% 100vh;
-  background-attachment: fixed;
-}
-
-</style>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-<link rel="shortcut icon" href="{{ url_for('static',filename='img/pokeball.ico')}}">
-<body>
-<center>
-<b style="font-size:40px;">Trade Offers Received</b>
-<br><br><br><br>
-<a href='/home'>Home</a>
-<a href='/trade'>New Trade</a>
-<a href='/trade/outg'>View Trade Requests</a>
-<a href = 'unc'>View Unconfirmed Trades</a>
-<br><br>
-
-
-{% for trade in pokes %}
-<form name = "submitForm" method="POST" action = "/trade/resp">
-<input type = "hidden" name="node" value={{trade.node}}>
-<input type = "hidden" name="Sendpoke" value={{trade.sentid}}>
-<input type = "hidden" name="Rec" value = {{trade.recid}}>
-<input type = "hidden" name = "tim" value = {{trade.time}}>
-<b> Pokemon to be Received: {{trade.sent}}<br> Pokemon to be Sent : {{trade.rec}}<br> Trainer : {{trade.node}}</b>
-<br>
-<center>
-<input type = "submit" name="submit" value = "Accept">
-<input type = "submit" name="submit" value = "Reject">
-</center>
-<br><br><br>
-{% endfor %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trade Offers Received</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='img/pokeball.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="game">
+<div class="page">
+  <div class="topbar"><h1>Trade Offers Received ({{ pokes|length }})</h1></div>
+  <nav class="actions">
+    <a class="btn secondary" href="/home">Home</a>
+    <a class="btn secondary" href="/trade">New Trade</a>
+    <a class="btn secondary" href="/trade/outg">View Trade Requests</a>
+    <a class="btn secondary" href="/trade/unc">View Unconfirmed Trades</a>
+  </nav>
+  {% for trade in pokes %}
+  <form class="offer" method="post" action="/trade/resp">
+    <input type="hidden" name="node" value="{{ trade.node }}">
+    <input type="hidden" name="Sendpoke" value="{{ trade.sentid }}">
+    <input type="hidden" name="Rec" value="{{ trade.recid }}">
+    <input type="hidden" name="tim" value="{{ trade.time }}">
+    <div>Pokemon to be received: <strong>{{ trade.sent }}</strong></div>
+    <div>Pokemon to be sent: <strong>{{ trade.rec }}</strong></div>
+    <div>Trainer: <span class="trainer">{{ trade.node }}</span></div>
+    <div class="row">
+      <button class="btn" type="submit" name="submit" value="Accept">Accept</button>
+      <button class="btn secondary" type="submit" name="submit" value="Reject">Reject</button>
+    </div>
+  </form>
+  {% else %}
+  <div class="empty"><p>No trade offers waiting.</p></div>
+  {% endfor %}
+</div>
+</body>
+</html>
